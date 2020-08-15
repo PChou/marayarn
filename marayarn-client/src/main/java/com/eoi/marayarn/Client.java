@@ -22,6 +22,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static com.eoi.marayarn.Constants.*;
 
@@ -34,6 +36,7 @@ public class Client {
             FsPermission.createImmutable(Short.parseShort("644", 8));
     private static final String STAGE_DIR = ".stage";
     private static final String AM_JAR_KEY = "__marayarn_am__.jar";
+    private static final Pattern fragment = Pattern.compile("#.*$");
 
     private final ClientArguments arguments;
     private final YarnClient yarnClient;
@@ -91,7 +94,7 @@ public class Client {
         }
     }
 
-    private Map<String, LocalResource> prepareLocalResource(ApplicationId applicationId) throws IOException {
+    private Map<String, LocalResource> prepareLocalResource(ApplicationId applicationId) throws Exception {
         FileSystem fs = FileSystem.get(this.yarnConfiguration);
         Path dst = new Path(fs.getHomeDirectory(), STAGE_DIR + "/" + applicationId.toString());
         Map<String, LocalResource> localResources = new HashMap<>();
@@ -102,9 +105,17 @@ public class Client {
         addLocalResource(localResources, AM_JAR_KEY, destPath, LocalResourceType.FILE);
         // 上传自定义资源
         for (Artifact artifact: this.arguments.getArtifacts()) {
+            String localPath = artifact.getLocalPath();
             Path sFile = new Path(artifact.getLocalPath());
+            Matcher fragmentMatcher = fragment.matcher(localPath);
+            String fragment = sFile.getName();
+            if (fragmentMatcher.find()) {
+                fragment = fragmentMatcher.group(0).substring(1);
+                String removeFragment = fragmentMatcher.replaceFirst("");
+                sFile = new Path(removeFragment);
+            }
             Path dFile = copyFileToRemote(dst, sFile);
-            addLocalResource(localResources, sFile.getName(), dFile, artifact.getType());
+            addLocalResource(localResources, fragment, dFile, artifact.getType());
         }
         return localResources;
     }
@@ -121,6 +132,8 @@ public class Client {
 
     private Map<String, String> setupLaunchEnv(ApplicationId applicationId, Map<String, LocalResource> artifacts) {
         Map<String, String> env = new HashMap<>();
+        // setup command line
+        env.put(AM_ENV_COMMANDLINE, this.arguments.getCommand());
         // setup class path
         StringBuilder classPathEnv = new StringBuilder(ApplicationConstants.Environment.CLASSPATH.$$());
         classPathEnv.append(ApplicationConstants.CLASS_PATH_SEPARATOR);
@@ -140,6 +153,7 @@ public class Client {
         }
         // setup environments for artifacts
         if (artifacts != null && artifacts.size() > 0) {
+            List<String> keys = new ArrayList<>();
             List<String> files = new ArrayList<>();
             List<String> timestamps = new ArrayList<>();
             List<String> sizes = new ArrayList<>();
@@ -148,12 +162,14 @@ public class Client {
             for (Map.Entry<String, LocalResource> artifact: artifacts.entrySet()) {
                 if (artifact.getKey().equals(AM_JAR_KEY))
                     continue;
+                keys.add(artifact.getKey());
                 files.add(fromHadoopURLToURI(artifact.getValue().getResource()).toString());
                 timestamps.add(String.format("%d", artifact.getValue().getTimestamp()));
                 sizes.add(String.format("%d", artifact.getValue().getSize()));
                 visibilities.add(artifact.getValue().getVisibility().toString());
                 types.add(artifact.getValue().getType().toString());
             }
+            env.put(EXECUTOR_ARTIFACTS_FILE_KEYS, String.join(",", keys));
             env.put(EXECUTOR_ARTIFACTS_FILES, String.join(",", files));
             env.put(EXECUTOR_ARTIFACTS_TIMESTAMPS, String.join(",", timestamps));
             env.put(EXECUTOR_ARTIFACTS_SIZES, String.join(",", sizes));
@@ -178,8 +194,6 @@ public class Client {
         commands.add(String.format("%d", this.arguments.getCpu()));
         commands.add("--memory");
         commands.add(String.format("%d", this.arguments.getMemory()));
-        commands.add("--cmd");
-        commands.add("'" + this.arguments.getCommand() + "'");
         if (this.arguments.getQueue() != null && !this.arguments.getQueue().isEmpty()) {
             commands.add("--queue");
             commands.add(this.arguments.getQueue());
@@ -188,7 +202,6 @@ public class Client {
         commands.add("1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stdout");
         commands.add("2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stderr");
         return commands;
-        // return Lists.newArrayList(String.join(" ", commands));
     }
 
     private ContainerLaunchContext createAmContainerLaunchContext(GetNewApplicationResponse appResponse) throws Exception {
@@ -244,9 +257,13 @@ public class Client {
         }
     }
 
-    private Path copyFileToRemote(Path destDir, Path srcPath) throws IOException {
-        FileSystem destFs = destDir.getFileSystem(this.yarnConfiguration);
-        FileSystem srcFs = srcPath.getFileSystem(this.yarnConfiguration);
+    private Path copyFileToRemote(Path destDir, Path srcPath) throws Exception {
+        // the reason why don't use Path.getFileSystem is that
+        // Path.toUri() will not decode the encoding stuff
+        // FileSystem destFs = destDir.getFileSystem(this.yarnConfiguration);
+        // FileSystem srcFs = srcPath.getFileSystem(this.yarnConfiguration);
+        FileSystem destFs = FileSystem.get(new URI(destDir.toString()), this.yarnConfiguration);
+        FileSystem srcFs = FileSystem.get(new URI(srcPath.toString()), this.yarnConfiguration);
         Path destPath = srcPath;
         if (!compareFs(srcFs, destFs)) {
             destPath = new Path(destDir, srcPath.getName());
@@ -279,7 +296,7 @@ public class Client {
         // In HA or when using viewfs, the host part of the URI may not actually be a host, but the
         // name of the HDFS namespace. Those names won't resolve, so avoid even trying if they
         // match.
-        if (srcHost != null && dstHost != null && srcHost.equals(dstHost)) {
+        if (srcHost != null && dstHost != null && !srcHost.equals(dstHost)) {
             srcHost = InetAddress.getByName(srcHost).getCanonicalHostName();
             dstHost = InetAddress.getByName(dstHost).getCanonicalHostName();
         }

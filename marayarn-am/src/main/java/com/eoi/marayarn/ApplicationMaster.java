@@ -27,6 +27,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.InetAddress;
 
+import static com.eoi.marayarn.Constants.AM_ENV_COMMANDLINE;
+
 public class ApplicationMaster {
     private static Logger logger = LoggerFactory.getLogger(ApplicationMaster.class);
     private NioServerSocketChannel channel;
@@ -160,14 +162,11 @@ public class ApplicationMaster {
                 .desc("The number of vcores of every executor").build();
         Option memory = new com.eoi.marayarn.OptionBuilder("memory").hasArg(true).argName("int")
                 .desc("Memory of every executor in MB").build();
-        Option command = new com.eoi.marayarn.OptionBuilder("cmd").hasArg(true).argName("command")
-                .desc("Commandline of launching executor").build();
         Option queue = new com.eoi.marayarn.OptionBuilder("queue").hasArg(true).argName("queueName")
                 .desc("queueName").build();
         options.addOption(instances);
         options.addOption(vcpu);
         options.addOption(memory);
-        options.addOption(command);
         options.addOption(queue);
         return options;
     }
@@ -177,8 +176,8 @@ public class ApplicationMaster {
         arguments.numExecutors = getIntOrDefault(commandLine, "executors", 0);
         arguments.executorCores = getIntOrDefault(commandLine, "cores", 0);
         arguments.executorMemory = getIntOrDefault(commandLine, "memory", 0);
-        arguments.commandLine = commandLine.getOptionValue("cmd");
         arguments.queue = commandLine.getOptionValue("queue");
+        arguments.commandLine = System.getenv(AM_ENV_COMMANDLINE);
         return arguments;
     }
 

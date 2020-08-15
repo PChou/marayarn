@@ -1,6 +1,10 @@
 package com.eoi.marayarn;
 
 public class Constants {
+
+    public static final String AM_ENV_COMMANDLINE = "AM_ENV_COMMANDLINE";
+
+    public static final String EXECUTOR_ARTIFACTS_FILE_KEYS = "EXECUTOR_ARTIFACTS_FILE_KEYS";
     public static final String EXECUTOR_ARTIFACTS_FILES = "EXECUTOR_ARTIFACTS_FILES";
     public static final String EXECUTOR_ARTIFACTS_TIMESTAMPS = "EXECUTOR_ARTIFACTS_TIMESTAMPS";
     public static final String EXECUTOR_ARTIFACTS_SIZES = "EXECUTOR_ARTIFACTS_SIZES";

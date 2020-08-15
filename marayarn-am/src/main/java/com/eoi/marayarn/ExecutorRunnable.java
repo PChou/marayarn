@@ -30,6 +30,7 @@ public class ExecutorRunnable implements Runnable {
 
     private LocalResource setupLocalResource(
             Map<String, LocalResource> localResources,
+            String key,
             String file,
             String timestamp,
             String size,
@@ -43,7 +44,7 @@ public class ExecutorRunnable implements Runnable {
             amJarRsrc.setResource(ConverterUtils.getYarnUrlFromURI(uri));
             amJarRsrc.setTimestamp(Long.parseLong(timestamp));
             amJarRsrc.setSize(Long.parseLong(size));
-            localResources.put(new Path(uri.getPath()).getName(), amJarRsrc);
+            localResources.put(key, amJarRsrc);
         } catch (Exception ex) {
             logger.warn("Failed to prepare local resource {}", file, ex);
         }
@@ -52,9 +53,7 @@ public class ExecutorRunnable implements Runnable {
 
     private List<String> prepareCommandLine(String commandLine) {
         List<String> commands = new ArrayList<>();
-        commands.add("/bin/sh");
-        commands.add("-c");
-        commands.add("'" + commandLine + "'");
+        commands.add(commandLine);
         commands.add("1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stdout");
         commands.add("2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stderr");
         return commands;
@@ -65,13 +64,14 @@ public class ExecutorRunnable implements Runnable {
         if (System.getenv(EXECUTOR_ARTIFACTS_FILES) == null || System.getenv(EXECUTOR_ARTIFACTS_FILES).isEmpty()) {
             return localResources;
         }
+        String[] keys = System.getenv(EXECUTOR_ARTIFACTS_FILE_KEYS).split(",");
         String[] files = System.getenv(EXECUTOR_ARTIFACTS_FILES).split(",");
         String[] timestamps = System.getenv(EXECUTOR_ARTIFACTS_TIMESTAMPS).split(",");
         String[] sizes = System.getenv(EXECUTOR_ARTIFACTS_SIZES).split(",");
         String[] visibilities = System.getenv(EXECUTOR_ARTIFACTS_VISIBILITIES).split(",");
         String[] types = System.getenv(EXECUTOR_ARTIFACTS_TYPES).split(",");
         for (int i = 0; i < files.length; i++) {
-            setupLocalResource(localResources, files[i], timestamps[i], sizes[i], visibilities[i], types[i]);
+            setupLocalResource(localResources, keys[i], files[i], timestamps[i], sizes[i], visibilities[i], types[i]);
         }
         return localResources;
     }
