@@ -29,17 +29,29 @@ import java.net.InetAddress;
 
 import static com.eoi.marayarn.Constants.AM_ENV_COMMANDLINE;
 
-public class ApplicationMaster {
-    private static Logger logger = LoggerFactory.getLogger(ApplicationMaster.class);
+public class MaraApplicationMaster {
+    private static Logger logger = LoggerFactory.getLogger(MaraApplicationMaster.class);
     private NioServerSocketChannel channel;
     public YarnConfiguration configuration;
     public ApplicationAttemptId applicationAttemptId;
     public ApplicationMasterArguments arguments;
     public String trackingUrl;
+    public String amContainerLogUrl;
+    public String webSchema;
+    public String user;
     @SuppressWarnings("rawtypes")
     public AMRMClient amClient;
     public YarnAllocator allocator;
     private volatile boolean finished;
+
+    public void terminate() throws Exception {
+        this.finished = true;
+        unregister(FinalApplicationStatus.KILLED);
+    }
+
+    public String getAMContainerLogs() {
+        return amContainerLogUrl;
+    }
 
     private void initializePipeline(SocketChannel channel) {
         if ( channel == null )
@@ -102,6 +114,13 @@ public class ApplicationMaster {
         this.applicationAttemptId = ConverterUtils.toContainerId(containerId).getApplicationAttemptId();
         logger.info("ApplicationAttemptId: {}, ApplicationId: {}", this.applicationAttemptId,
                 this.applicationAttemptId.getApplicationId());
+        final String node = System.getenv(ApplicationConstants.Environment.NM_HOST.name());
+        final String port = System.getenv(ApplicationConstants.Environment.NM_HTTP_PORT.name());
+        final String user = System.getenv(ApplicationConstants.Environment.USER.name());
+        final String schema = YarnConfiguration.useHttps(configuration) ? "https" : "http";
+        this.webSchema = schema;
+        this.user = user;
+        this.amContainerLogUrl = String.format("%s://%s:%s/node/containerlogs/%s/%s", schema, node, port, containerId, user);
         this.amClient = AMRMClient.createAMRMClient();
         this.amClient.init(this.configuration);
         this.amClient.start();
@@ -125,33 +144,6 @@ public class ApplicationMaster {
 
     public void unregister(FinalApplicationStatus status) throws YarnException, IOException {
         this.amClient.unregisterApplicationMaster(status, "", trackingUrl);
-    }
-
-    public Thread launchReporterThread() {
-        int expiryInterval = configuration.getInt(YarnConfiguration.RM_AM_EXPIRY_INTERVAL_MS, 120000);
-        int interval = Math.max(0, Math.min(expiryInterval / 2, 5000));
-        Thread t = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                while(!finished) {
-                    try {
-                        allocator.allocateResources();
-                    } catch (Exception ex) {
-                        logger.error("Reporter error ", ex);
-                    } finally {
-                        try {
-                            Thread.sleep(interval);
-                        } catch (Exception ex) {
-                            finished = true;
-                        }
-                    }
-                }
-            }
-        });
-        t.setDaemon(true);
-        t.setName("Reporter");
-        t.start();
-        return t;
     }
 
     public static Options setupOptions() {
@@ -194,7 +186,7 @@ public class ApplicationMaster {
         Options options = setupOptions();
         CommandLineParser parser = new GnuParser();
         CommandLine argLine = parser.parse(options, args);
-        ApplicationMaster applicationMaster = new ApplicationMaster();
+        MaraApplicationMaster applicationMaster = new MaraApplicationMaster();
         ApplicationMasterArguments arguments = toAMArguments(argLine);
         arguments.checkArguments();
         applicationMaster.arguments = arguments;
@@ -208,6 +200,21 @@ public class ApplicationMaster {
         logger.info("Begin to allocate resources");
         applicationMaster.allocator.allocateResources();
         logger.info("Starting reporter thread");
-        applicationMaster.launchReporterThread();
+        int expiryInterval = applicationMaster.configuration.getInt(YarnConfiguration.RM_AM_EXPIRY_INTERVAL_MS, 120000);
+        int interval = Math.max(0, Math.min(expiryInterval / 2, 5000));
+        while(!applicationMaster.finished) {
+            try {
+                applicationMaster.allocator.allocateResources();
+            } catch (Exception ex) {
+                logger.error("Reporter error ", ex);
+            } finally {
+                try {
+                    Thread.sleep(interval);
+                } catch (Exception ex) {
+                    applicationMaster.finished = true;
+                }
+            }
+        }
+        System.exit(0);
     }
 }

@@ -138,13 +138,9 @@ public class ClientArguments {
 
     public void check() throws InvalidClientArgumentException {
         if (this.ApplicationMasterClass == null || this.ApplicationMasterClass.isEmpty()) {
-            this.ApplicationMasterClass = "com.eoi.marayarn.ApplicationMaster";
+            this.ApplicationMasterClass = "com.eoi.marayarn.MaraApplicationMaster";
         }
         checkIfNullOrEmpty(this.ApplicationMasterJar, "ApplicationMasterJar");
-//        File jar = new File(this.ApplicationMasterJar);
-//        if (!jar.exists()) {
-//            throw new InvalidClientArgumentException(String.format("ApplicationMasterJar %s is not found", this.ApplicationMasterJar));
-//        }
         checkIfNullOrEmpty(this.ApplicationName, "ApplicationName");
         if (this.getCpu() <= 0) {
             this.setCpu(1);

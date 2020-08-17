@@ -1,9 +1,7 @@
 package com.eoi.marayarn;
 
-import com.eoi.marayarn.http.ApplicationHandler;
-import com.eoi.marayarn.http.Handler;
-import com.eoi.marayarn.http.JsonUtil;
-import com.eoi.marayarn.http.model.ErrorResponse;
+import com.eoi.marayarn.http.*;
+import com.eoi.marayarn.http.model.AckResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFutureListener;
@@ -16,13 +14,13 @@ import java.util.List;
 import java.util.Map;
 
 public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
-    private ApplicationMaster applicationMaster;
     private List<Handler> handlers;
 
-    public HttpRequestHandler(ApplicationMaster applicationMaster) {
-        this.applicationMaster = applicationMaster;
+    public HttpRequestHandler(MaraApplicationMaster applicationMaster) {
         this.handlers = new ArrayList<>();
         this.handlers.add(new ApplicationHandler(applicationMaster));
+        // PageHandler should be always the last handler added
+        this.handlers.add(new PageHandler());
     }
 
     @Override
@@ -36,12 +34,10 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
         Map<String, String> urlParams = null;
         for (Handler h: this.handlers) {
             Map<String, String> params = h.match(req.uri(), req.method());
-            if (params == null) {
-                continue;
-            }
-            if (urlParams == null || urlParams.size() < params.size()) {
+            if (params != null) {
                 urlParams = params;
                 handler = h;
+                break;
             }
         }
         FullHttpResponse response;
@@ -50,35 +46,36 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
                 int len = req.content().readableBytes();
                 byte[] buffer = new byte[len];
                 req.content().readBytes(buffer);
-                byte[] result = handler.process(urlParams, req.method(), buffer);
+                ProcessResult result = handler.process(urlParams, req.method(), buffer);
                 if (result != null) {
                     response = new DefaultFullHttpResponse(
                             HttpVersion.HTTP_1_1,
                             HttpResponseStatus.OK,
-                            Unpooled.copiedBuffer(result));
+                            Unpooled.copiedBuffer(result.body));
                 } else {
                     response = new DefaultFullHttpResponse(
                             HttpVersion.HTTP_1_1,
                             HttpResponseStatus.OK);
                 }
+                response.headers().set(HttpHeaderNames.CONTENT_TYPE, result.contentType);
             } else {
-                throw new Handler.HandlerErrorException(HttpResponseStatus.NOT_FOUND, "no match handler");
+                throw new HandlerErrorException(HttpResponseStatus.NOT_FOUND, "no match handler");
             }
-        } catch (Handler.HandlerErrorException ex) {
+        } catch (HandlerErrorException ex) {
             response = createFromException(ex);
         }
-        response.headers().set(HttpHeaderNames.CONTENT_TYPE, "application/json; charset=UTF-8");
         ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
     }
 
-    private FullHttpResponse createFromException(Handler.HandlerErrorException exception)
+    private FullHttpResponse createFromException(HandlerErrorException exception)
             throws JsonProcessingException {
-        ErrorResponse response = new ErrorResponse();
-        response.errMessage = exception.message;
+        AckResponse response = AckResponse.build(exception.status.codeAsText().toString(), exception.message);
         byte[] buffer = JsonUtil._mapper.writeValueAsBytes(response);
-        return new DefaultFullHttpResponse(
+        FullHttpResponse httpResp = new DefaultFullHttpResponse(
                 HttpVersion.HTTP_1_1,
                 exception.status,
                 Unpooled.copiedBuffer(buffer));
+        httpResp.headers().set(HttpHeaderNames.CONTENT_TYPE, "application/json; charset=UTF-8");
+        return httpResp;
     }
 }

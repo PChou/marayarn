@@ -1,7 +1,7 @@
 package com.eoi.marayarn.http;
 
+import com.eoi.marayarn.tuple.Tuple2;
 import io.netty.handler.codec.http.HttpMethod;
-import io.netty.handler.codec.http.HttpResponseStatus;
 
 import java.util.Map;
 
@@ -19,17 +19,9 @@ public interface Handler {
      * 处理请求, 如果处理成功返回body内容，如果处理失败抛出异常
      * @param urlParams url的参数，通过match匹配得到的
      * @param body body，可能为空
-     * @return 返回的body内容
+     * @return 返回的body内容和Content-Type
      * @throws HandlerErrorException
      */
-    byte[] process(Map<String, String> urlParams, HttpMethod method, byte[] body) throws HandlerErrorException;
-
-    class HandlerErrorException extends Exception {
-        public HttpResponseStatus status;
-        public String message;
-        public HandlerErrorException(HttpResponseStatus status, String message) {
-            this.status = status;
-            this.message = message;
-        }
-    }
+    ProcessResult process(Map<String, String> urlParams, HttpMethod method, byte[] body)
+            throws HandlerErrorException;
 }

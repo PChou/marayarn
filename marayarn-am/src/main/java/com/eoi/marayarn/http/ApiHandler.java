@@ -20,5 +20,14 @@ public abstract class ApiHandler implements Handler {
         return apiMatch(uri.substring(API_PREFIX.length()), method);
     }
 
+    @Override
+    public ProcessResult process(Map<String, String> urlParams, HttpMethod method, byte[] body)
+            throws HandlerErrorException {
+        byte[] content = apiProcess(urlParams, method, body);
+        return new ProcessResult(content, "application/json; charset=UTF-8");
+    }
+
     abstract Map<String, String> apiMatch(String uri, HttpMethod method);
+    abstract byte[] apiProcess(Map<String, String> urlParams, HttpMethod method, byte[] body)
+            throws HandlerErrorException;
 }

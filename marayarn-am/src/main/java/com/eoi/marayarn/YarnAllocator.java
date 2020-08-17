@@ -23,13 +23,18 @@ public class YarnAllocator {
     private AMRMClient<AMRMClient.ContainerRequest> amrmClient;
     private NMClient nmClient;
     private ApplicationAttemptId applicationAttemptId;
-    private ApplicationMasterArguments arguments;
+    public ApplicationMasterArguments arguments;
     private ThreadPoolExecutor launcherPool;
     private Resource containerResource;
     public Map<ContainerId, ContainerAndState> allocatedContainers;
 
     // 状态
     public int targetNumExecutors = 0;
+    // restarting状态下，container正在被终止，targetNumExecutors固定在0
+    // update和scale引起的numExecutors变化只会体现在pendingNumExecutors
+    // 当restarting完成后，restarting重置为true，将pendingNumExecutors赋值给targetNumExecutors
+    private boolean restarting = false;
+    private int pendingNumExecutors = 0;
 
     public YarnAllocator(
             Configuration configuration,
@@ -106,15 +111,22 @@ public class YarnAllocator {
         }
 
         if (allocatedContainers.size() == targetNumExecutors) {
-            for (Map.Entry<ContainerId, ContainerAndState> c: allocatedContainers.entrySet()) {
-                ContainerAndState containerState = c.getValue();
-                Container container = containerState.container;
-                if (containerState.state == 1) continue;
-                // start the container and set state flag to 1
-                ExecutorRunnable executorRunnable = new ExecutorRunnable(this.conf, container, this.arguments.commandLine, this.nmClient);
-                launcherPool.execute(executorRunnable);
-                logger.info("Launching container {} on host {}", c.getKey(), container.getNodeId().getHost());
-                containerState.state = 1;
+            if (restarting && targetNumExecutors == 0) {
+                // reset targetNumExecutors using pendingNumExecutors
+                targetNumExecutors = pendingNumExecutors;
+                pendingNumExecutors = 0;
+                restarting = false;
+            } else {
+                for (Map.Entry<ContainerId, ContainerAndState> c: allocatedContainers.entrySet()) {
+                    ContainerAndState containerState = c.getValue();
+                    Container container = containerState.container;
+                    if (containerState.state == 1) continue;
+                    // start the container and set state flag to 1
+                    ExecutorRunnable executorRunnable = new ExecutorRunnable(this.conf, container, this.arguments.commandLine, this.nmClient);
+                    launcherPool.execute(executorRunnable);
+                    logger.info("Launching container {} on host {}", c.getKey(), container.getNodeId().getHost());
+                    containerState.state = 1;
+                }
             }
         }
     }
@@ -231,6 +243,35 @@ public class YarnAllocator {
             return;
         }
         targetNumExecutors = num;
+    }
+
+    public synchronized void update(ApplicationMasterArguments newArguments) {
+        if (newArguments == null)
+            return;
+        if (targetNumExecutors == newArguments.numExecutors
+                && stringEquals(this.arguments.commandLine, newArguments.commandLine)
+                && stringEquals(this.arguments.queue, newArguments.queue)
+                && this.arguments.executorMemory == newArguments.executorMemory
+                && this.arguments.executorCores == newArguments.executorCores) {
+            // no change
+            return;
+        }
+        this.arguments.commandLine = newArguments.commandLine;
+        this.arguments.queue = newArguments.queue;
+        this.arguments.executorMemory = newArguments.executorMemory;
+        this.arguments.executorCores = newArguments.executorCores;
+        this.arguments.numExecutors = newArguments.numExecutors;
+        this.targetNumExecutors = 0; // clear all container
+        this.restarting = true;
+        this.pendingNumExecutors = newArguments.numExecutors;
+    }
+
+    private boolean stringEquals(String a, String b) {
+        if (a == null && b == null)
+            return true;
+        if (a != null && a.equals(b))
+            return true;
+        return false;
     }
 
 

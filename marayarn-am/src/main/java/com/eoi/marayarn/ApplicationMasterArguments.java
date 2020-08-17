@@ -1,7 +1,5 @@
 package com.eoi.marayarn;
 
-import org.apache.commons.cli.CommandLine;
-
 public class ApplicationMasterArguments {
     public int numExecutors;
     public int executorCores;

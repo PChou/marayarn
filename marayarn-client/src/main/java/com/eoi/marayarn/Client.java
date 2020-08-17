@@ -38,26 +38,24 @@ public class Client {
     private static final String AM_JAR_KEY = "__marayarn_am__.jar";
     private static final Pattern fragment = Pattern.compile("#.*$");
 
-    private final ClientArguments arguments;
     private final YarnClient yarnClient;
     private final YarnConfiguration yarnConfiguration;
 
-    public Client(ClientArguments arguments) {
-        this.arguments = arguments;
+    public Client() {
         this.yarnClient = YarnClient.createYarnClient();
         this.yarnConfiguration = new YarnConfiguration();
     }
 
-    public ApplicationReport launch() throws Exception {
-        checkArguments();
-        return submitApplication();
+    public ApplicationReport launch(ClientArguments arguments) throws Exception {
+        checkArguments(arguments);
+        return submitApplication(arguments);
     }
 
-    public void checkArguments() throws InvalidClientArgumentException {
-        this.arguments.check();
+    public void checkArguments(ClientArguments arguments) throws InvalidClientArgumentException {
+        arguments.check();
     }
 
-    public ApplicationReport submitApplication() throws Exception {
+    public ApplicationReport submitApplication(ClientArguments arguments) throws Exception {
         this.yarnClient.init(this.yarnConfiguration);
         this.yarnClient.start();
         logger.info("Started yarn client and creating application");
@@ -68,12 +66,12 @@ public class Client {
         // Verify whether the cluster has enough resources for our AM
         verifyAMResource(newAppResponse);
         logger.info("Setting up container launch context for our AM");
-        ContainerLaunchContext amLaunchContext = createAmContainerLaunchContext(newAppResponse);
+        ContainerLaunchContext amLaunchContext = createAmContainerLaunchContext(newAppResponse, arguments);
         // prepare and submit am
         ApplicationSubmissionContext submissionContext = newApp.getApplicationSubmissionContext();
-        submissionContext.setApplicationName(this.arguments.getApplicationName());
-        if (this.arguments.getQueue() != null && !this.arguments.getQueue().isEmpty()) {
-            submissionContext.setQueue(this.arguments.getQueue());
+        submissionContext.setApplicationName(arguments.getApplicationName());
+        if (arguments.getQueue() != null && !arguments.getQueue().isEmpty()) {
+            submissionContext.setQueue(arguments.getQueue());
         }
         submissionContext.setAMContainerSpec(amLaunchContext);
         submissionContext.setApplicationType("MARAYARN");
@@ -94,17 +92,17 @@ public class Client {
         }
     }
 
-    private Map<String, LocalResource> prepareLocalResource(ApplicationId applicationId) throws Exception {
+    private Map<String, LocalResource> prepareLocalResource(ApplicationId applicationId, ClientArguments arguments) throws Exception {
         FileSystem fs = FileSystem.get(this.yarnConfiguration);
         Path dst = new Path(fs.getHomeDirectory(), STAGE_DIR + "/" + applicationId.toString());
         Map<String, LocalResource> localResources = new HashMap<>();
         FileSystem.mkdirs(fs, dst, new FsPermission(STAGING_DIR_PERMISSION));
         // 上传AM
-        Path src = new Path(this.arguments.getApplicationMasterJar());
+        Path src = new Path(arguments.getApplicationMasterJar());
         Path destPath = copyFileToRemote(dst, src);
         addLocalResource(localResources, AM_JAR_KEY, destPath, LocalResourceType.FILE);
         // 上传自定义资源
-        for (Artifact artifact: this.arguments.getArtifacts()) {
+        for (Artifact artifact: arguments.getArtifacts()) {
             String localPath = artifact.getLocalPath();
             Path sFile = new Path(artifact.getLocalPath());
             Matcher fragmentMatcher = fragment.matcher(localPath);
@@ -130,10 +128,10 @@ public class Client {
         }
     }
 
-    private Map<String, String> setupLaunchEnv(ApplicationId applicationId, Map<String, LocalResource> artifacts) {
+    private Map<String, String> setupLaunchEnv(ApplicationId applicationId, ClientArguments arguments, Map<String, LocalResource> artifacts) {
         Map<String, String> env = new HashMap<>();
         // setup command line
-        env.put(AM_ENV_COMMANDLINE, this.arguments.getCommand());
+        env.put(AM_ENV_COMMANDLINE, arguments.getCommand());
         // setup class path
         StringBuilder classPathEnv = new StringBuilder(ApplicationConstants.Environment.CLASSPATH.$$());
         classPathEnv.append(ApplicationConstants.CLASS_PATH_SEPARATOR);
@@ -146,9 +144,9 @@ public class Client {
         }
         env.put(ApplicationConstants.Environment.CLASSPATH.toString(), classPathEnv.toString());
         // setup custom environment
-        env.putAll(this.arguments.getAMEnvironments());
+        env.putAll(arguments.getAMEnvironments());
         // setup executor environment with EXECUTOR_LAUNCH_ENV_PREFIX
-        for (Map.Entry<String, String> entry: this.arguments.getExecutorEnvironments().entrySet()) {
+        for (Map.Entry<String, String> entry: arguments.getExecutorEnvironments().entrySet()) {
             env.put(EXECUTOR_LAUNCH_ENV_PREFIX + entry.getKey(), entry.getValue());
         }
         // setup environments for artifacts
@@ -179,7 +177,7 @@ public class Client {
         return env;
     }
 
-    private List<String> prepareApplicationMasterCommands(ApplicationId applicationId) {
+    private List<String> prepareApplicationMasterCommands(ApplicationId applicationId, ClientArguments arguments) {
         List<String> commands = new ArrayList<>();
         commands.add(ApplicationConstants.Environment.JAVA_HOME.$$() + "/bin/java");
         commands.add("-server");
@@ -187,16 +185,16 @@ public class Client {
         Path tmpDir = new Path(ApplicationConstants.Environment.PWD.$$(), this.yarnConfiguration.DEFAULT_CONTAINER_TEMP_DIR);
         commands.add("-Djava.io.tmpdir=" + tmpDir);
         // TODO support custom java options
-        commands.add(this.arguments.getApplicationMasterClass());// main class
+        commands.add(arguments.getApplicationMasterClass());// main class
         commands.add("--executors");
-        commands.add(String.format("%d", this.arguments.getInstances()));
+        commands.add(String.format("%d", arguments.getInstances()));
         commands.add("--cores");
-        commands.add(String.format("%d", this.arguments.getCpu()));
+        commands.add(String.format("%d", arguments.getCpu()));
         commands.add("--memory");
-        commands.add(String.format("%d", this.arguments.getMemory()));
-        if (this.arguments.getQueue() != null && !this.arguments.getQueue().isEmpty()) {
+        commands.add(String.format("%d", arguments.getMemory()));
+        if (arguments.getQueue() != null && !arguments.getQueue().isEmpty()) {
             commands.add("--queue");
-            commands.add(this.arguments.getQueue());
+            commands.add(arguments.getQueue());
         }
         // ApplicationMaster arguments
         commands.add("1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stdout");
@@ -204,14 +202,14 @@ public class Client {
         return commands;
     }
 
-    private ContainerLaunchContext createAmContainerLaunchContext(GetNewApplicationResponse appResponse) throws Exception {
+    private ContainerLaunchContext createAmContainerLaunchContext(GetNewApplicationResponse appResponse, ClientArguments arguments) throws Exception {
         ApplicationId appId = appResponse.getApplicationId();
         logger.info("Preparing local resource");
-        Map<String, LocalResource> localResource = prepareLocalResource(appId);
+        Map<String, LocalResource> localResource = prepareLocalResource(appId, arguments);
         logger.info("Setup launch environment");
-        Map<String, String> envs = setupLaunchEnv(appId, localResource);
+        Map<String, String> envs = setupLaunchEnv(appId, arguments ,localResource);
         logger.info("Preparing commands for application master");
-        List<String> commands = prepareApplicationMasterCommands(appId);
+        List<String> commands = prepareApplicationMasterCommands(appId, arguments);
         ContainerLaunchContext clc = Records.newRecord(ContainerLaunchContext.class);
         clc.setLocalResources(localResource);
         clc.setEnvironment(envs);

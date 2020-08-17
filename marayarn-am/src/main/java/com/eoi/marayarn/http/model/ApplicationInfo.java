@@ -8,6 +8,7 @@ public class ApplicationInfo {
     public String applicationId;
     public long startTime;
     public String trackingUrl;
+    public String logUrl;
     public ApplicationMasterArguments arguments;
     public int numRunningExecutors;
     public int numTotalExecutors;

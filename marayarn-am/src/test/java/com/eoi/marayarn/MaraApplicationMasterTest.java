@@ -7,10 +7,10 @@ import org.apache.commons.cli.Options;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class ApplicationMasterTest {
+public class MaraApplicationMasterTest {
     @Test
     public void testOptions() throws Exception {
-        Options options = ApplicationMaster.setupOptions();
+        Options options = MaraApplicationMaster.setupOptions();
         String[] args = new String[]{
                 "--cmd", "while true; do date; sleep 5; done",
                 "--cores", "2",
@@ -20,7 +20,7 @@ public class ApplicationMasterTest {
         };
         CommandLineParser parser = new GnuParser();
         CommandLine argLine = parser.parse(options, args);
-        ApplicationMasterArguments arguments = ApplicationMaster.toAMArguments(argLine);
+        ApplicationMasterArguments arguments = MaraApplicationMaster.toAMArguments(argLine);
         Assert.assertEquals(2, arguments.executorCores);
         Assert.assertEquals(2, arguments.numExecutors);
         Assert.assertEquals(1024, arguments.executorMemory);
