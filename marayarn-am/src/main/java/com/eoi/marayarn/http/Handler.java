@@ -1,6 +1,5 @@
 package com.eoi.marayarn.http;
 
-import com.eoi.marayarn.tuple.Tuple2;
 import io.netty.handler.codec.http.HttpMethod;
 
 import java.util.Map;

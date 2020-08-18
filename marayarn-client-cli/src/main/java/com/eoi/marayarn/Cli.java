@@ -26,13 +26,13 @@ public class Cli {
         Option instance = new com.eoi.marayarn.OptionBuilder("instance").hasArg(true).argName("int")
                 .desc("The number of instance of the application (not include am)").build();
         Option files = new com.eoi.marayarn.OptionBuilder("file").hasArgs().argName("file://<LocalPath>")
-                .desc("Artifacts that need upload to hdfs").build();
+                .desc("Artifacts that need upload to hdfs, support [file|hdfs|http|https|ftp]://<user>:<password>@host:port...").build();
         Option command = new com.eoi.marayarn.OptionBuilder("cmd").hasArg(true).argName("cmd").required()
                 .desc("The command line").build();
         Option executorEnv = new com.eoi.marayarn.OptionBuilder("E").numberOfArgs(2).valueSeparator('=')
                 .desc("Executor launch environment variable, ex: -Ea=b").build();
         Option amJars = new com.eoi.marayarn.OptionBuilder("am").hasArg(true).required()
-                .desc("ApplicationMaster jar path").build();
+                .desc("ApplicationMaster jar path, support [file|hdfs|http|https|ftp]://<user>:<password>@host:port...").build();
         options.addOption(help);
         options.addOption(name);
         options.addOption(queue);
@@ -103,12 +103,14 @@ public class Cli {
                 System.exit(0);
             }
             ClientArguments clientArguments = toClientArguments(commandLine);
-            Client client = new Client(clientArguments);
-            ApplicationReport report = client.launch();
+            Client client = new Client();
+            ApplicationReport report = client.launch(clientArguments);
             logger.info("Tracking url: {}", report.getTrackingUrl());
-        } catch (Exception ex) {
+        } catch (ParseException ex) {
             HelpFormatter formatter = new HelpFormatter();
             formatter.printHelp( "com.eoi.marayarn.Cli", options );
+        } catch (Exception ex) {
+            logger.error("Failed to submit application", ex);
         }
     }
 

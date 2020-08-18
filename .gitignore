@@ -21,4 +21,4 @@ logs/
 # mac
 .DS_Store
 dependency-reduced-pom.xml
-marayarn-client/src/test/resources
+hadoop/

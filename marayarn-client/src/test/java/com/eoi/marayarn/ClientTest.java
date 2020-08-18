@@ -2,27 +2,67 @@ package com.eoi.marayarn;
 
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
 import org.apache.hadoop.yarn.api.records.LocalResourceType;
+import org.junit.Assert;
+import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.contrib.java.lang.system.EnvironmentVariables;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+@Ignore("need hadoop yarn environment to launch the test case")
 public class ClientTest {
+
+    public final static String AM_JAR_NAME = "marayarn-am-1.0-SNAPSHOT-jar-with-dependencies.jar";
+
+    private String getProjectRoot() {
+        // 无论是mvn命令还是intellij，在运行测试的时候都会设置PWD为当前module目录
+        File modulePath = new File(System.getenv("PWD"));
+        return modulePath.getParent();
+    }
+
+    @Rule
+    public final EnvironmentVariables environmentVariables = new EnvironmentVariables();
+
     @Test
-    public void clientTest1() throws Exception {
+    public void Client_initConfigurationTest_1() {
+        Client client = new Client();
         ClientArguments arguments = new ClientArguments();
-        arguments.setApplicationMasterJar("file:///Users/pchou/Projects/java/marayarn/marayarn-am/target/marayarn-am-1.0-SNAPSHOT-jar-with-dependencies.jar");
-        arguments.setApplicationName("marayarn_test");
+        arguments.setHadoopConfDir(getProjectRoot() + "/hadoop");
+        client.initConfiguration(arguments);
+        String fs = client.yarnConfiguration.get("fs.defaultFS");
+        Assert.assertEquals("hdfs://eoiNameService", fs);
+    }
+
+    @Test
+    public void Client_initConfigurationTest_2() {
+        Client client = new Client();
+        ClientArguments arguments = new ClientArguments();
+        environmentVariables.set("HADOOP_CONF_DIR", getProjectRoot() + "/hadoop");
+        client.initConfiguration(arguments);
+        String fs = client.yarnConfiguration.get("fs.defaultFS");
+        Assert.assertEquals("hdfs://eoiNameService", fs);
+    }
+
+
+    @Test
+    public void clientTest_simple_shell_command() throws Exception {
+        ClientArguments arguments = new ClientArguments();
+        arguments.setApplicationMasterJar(getProjectRoot() + "/marayarn-am/target/" + AM_JAR_NAME);
+        arguments.setApplicationName("marayarn_test1");
+        arguments.setHadoopConfDir(getProjectRoot() + "/hadoop");
         arguments.setCommand("while true; do date; sleep 5; done");
-        Client client = new Client(arguments);
-        ApplicationReport report = client.launch();
+        Client client = new Client();
+        ApplicationReport report = client.launch(arguments);
         System.out.println(report.getTrackingUrl());
     }
 
     @Test
-    public void clientTest2() throws Exception {
+    public void clientTest_() throws Exception {
         ClientArguments arguments = new ClientArguments();
-        arguments.setApplicationMasterJar("file:///Users/pchou/Projects/java/marayarn/marayarn-am/target/marayarn-am-1.0-SNAPSHOT-jar-with-dependencies.jar");
+        arguments.setApplicationMasterJar(getProjectRoot() + "/marayarn-am/target/" + AM_JAR_NAME);
         arguments.setApplicationName("marayarn_test2");
         List<Artifact> artifacts = new ArrayList<>();
         Artifact routerTar = new Artifact()
@@ -39,8 +79,8 @@ public class ClientTest {
         artifacts.add(logback);
         arguments.setArtifacts(artifacts);
         arguments.setCommand("{{JAVA_HOME}}/bin/java -jar -Dlogback.configurationFile=logback.xml router-2.1.0.tar.gz/router/router-*.jar application.yml");
-        Client client = new Client(arguments);
-        ApplicationReport report = client.launch();
+        Client client = new Client();
+        ApplicationReport report = client.launch(arguments);
         System.out.println(report.getTrackingUrl());
     }
 
@@ -64,8 +104,8 @@ public class ClientTest {
         artifacts.add(routerTar);
         arguments.setArtifacts(artifacts);
         arguments.setCommand("dir/logstash/bin/logstash -e 'input { stdin { } } output { stdout {} }'");
-        Client client = new Client(arguments);
-        ApplicationReport report = client.launch();
+        Client client = new Client();
+        ApplicationReport report = client.launch(arguments);
         System.out.println(report.getTrackingUrl());
     }
 }

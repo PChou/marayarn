@@ -1,0 +1,14 @@
+#!/bin/sh
+
+DIR=$(cd "$(dirname "$0")" && pwd)
+
+if [ -x "$JAVA_HOME/bin/java" ]; then
+    JAVA="$JAVA_HOME/bin/java"
+else
+    echo "JAVA_HOME is not set and use default java command."
+    JAVA="java"
+fi
+
+ProgramJar=${DIR}/marayarn-cli-*.jar
+
+"$JAVA" -jar $JAX_JAVA_OPTS ${ProgramJar} "$@"

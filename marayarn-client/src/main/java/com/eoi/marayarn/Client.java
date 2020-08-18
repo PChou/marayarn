@@ -13,15 +13,13 @@ import org.apache.hadoop.yarn.util.Records;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -29,7 +27,10 @@ import static com.eoi.marayarn.Constants.*;
 
 public class Client {
     public static final Logger logger = LoggerFactory.getLogger(Client.class);
+    // Memory needed to launch the ApplicationMaster
     private static final int AM_MIN_MEMEORY = 256;
+    // Core needed to launch the ApplicationMaster
+    private static final int AM_MIN_CORE = 1;
     private static final FsPermission STAGING_DIR_PERMISSION =
             FsPermission.createImmutable(Short.parseShort("755", 8));
     private static final FsPermission APP_FILE_PERMISSION =
@@ -39,23 +40,69 @@ public class Client {
     private static final Pattern fragment = Pattern.compile("#.*$");
 
     private final YarnClient yarnClient;
-    private final YarnConfiguration yarnConfiguration;
+    protected final YarnConfiguration yarnConfiguration;
 
     public Client() {
         this.yarnClient = YarnClient.createYarnClient();
         this.yarnConfiguration = new YarnConfiguration();
     }
 
+    /**
+     * launch an application
+     * @param arguments arguments that tell how to start the application
+     * @return ApplicationReport
+     * @throws Exception ResourceLimitException: resource not available
+     */
     public ApplicationReport launch(ClientArguments arguments) throws Exception {
         checkArguments(arguments);
         return submitApplication(arguments);
     }
 
+    /**
+     * check and set some default value for the arguments,
+     * @param arguments client argument
+     * @throws InvalidClientArgumentException
+     */
     public void checkArguments(ClientArguments arguments) throws InvalidClientArgumentException {
         arguments.check();
     }
 
-    public ApplicationReport submitApplication(ClientArguments arguments) throws Exception {
+    protected void initConfiguration(ClientArguments arguments) {
+        // check and set hadoopConfDir
+        String[] possibleHadoopConfPaths = new String[3];
+        if (arguments.getHadoopConfDir() != null && !arguments.getHadoopConfDir().isEmpty()) {
+            possibleHadoopConfPaths[0] = arguments.getHadoopConfDir();
+        } else {
+            String hadoopConfiDir = System.getenv("HADOOP_CONF_DIR");
+            String hadoopHome = System.getenv("HADOOP_HOME");
+            if (hadoopConfiDir != null && !hadoopConfiDir.isEmpty()) {
+                possibleHadoopConfPaths[1] = hadoopConfiDir;
+            } else if (hadoopHome != null && !hadoopHome.isEmpty()) {
+                possibleHadoopConfPaths[1] = hadoopHome + "/conf";
+                possibleHadoopConfPaths[2] = hadoopHome + "/etc/conf";
+            }
+        }
+        for (String possibleHadoopConfPath: possibleHadoopConfPaths) {
+            if (possibleHadoopConfPath != null) {
+                File dir = new File(possibleHadoopConfPath);
+                try {
+                    File[] files = FileUtil.listFiles(dir);
+                    for (File file: files) {
+                        if (file.isFile() && file.canRead() && file.getName().endsWith(".xml")) {
+                            this.yarnConfiguration.addResource(new Path(file.getAbsolutePath()));
+                        }
+                    }
+                } catch (Exception ex) {
+                    logger.warn("Failed to list or add resource in {}", dir, ex);
+                }
+            }
+        }
+        // TODO: add more fs impl to prevent ServiceLoader file override?
+        this.yarnConfiguration.set("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem");
+    }
+
+    protected ApplicationReport submitApplication(ClientArguments arguments) throws Exception {
+        initConfiguration(arguments);
         this.yarnClient.init(this.yarnConfiguration);
         this.yarnClient.start();
         logger.info("Started yarn client and creating application");
@@ -63,10 +110,10 @@ public class Client {
         GetNewApplicationResponse newAppResponse = newApp.getNewApplicationResponse();
         logger.info("Created application: {}, maxResourceCapability: {}",
                 newAppResponse.getApplicationId(), newAppResponse.getMaximumResourceCapability());
-        // Verify whether the cluster has enough resources for our AM
-        verifyAMResource(newAppResponse);
+        // Verify whether the cluster has enough resources for our am and executor
+        verifyAMResource(newAppResponse, arguments);
         logger.info("Setting up container launch context for our AM");
-        ContainerLaunchContext amLaunchContext = createAmContainerLaunchContext(newAppResponse, arguments);
+        ContainerLaunchContext amLaunchContext = createAmContainerLaunchContext(newAppResponse.getApplicationId(), arguments);
         // prepare and submit am
         ApplicationSubmissionContext submissionContext = newApp.getApplicationSubmissionContext();
         submissionContext.setApplicationName(arguments.getApplicationName());
@@ -78,21 +125,29 @@ public class Client {
         // submissionContext.setMaxAppAttempts();
         Resource capability = Records.newRecord(Resource.class);
         capability.setMemory(AM_MIN_MEMEORY);
-        capability.setVirtualCores(1);
+        capability.setVirtualCores(AM_MIN_CORE);
         submissionContext.setResource(capability);
         logger.info("Submitting application {}", newAppResponse.getApplicationId());
         this.yarnClient.submitApplication(submissionContext);
         return this.yarnClient.getApplicationReport(submissionContext.getApplicationId());
     }
 
-    private void verifyAMResource(GetNewApplicationResponse applicationResponse) throws ResourceLimitException{
+    // TODO: the following configuration will affect the final resource allocation
+    //   yarn.scheduler.minimum-allocation-mb, yarn.scheduler.increment-allocation-mb
+    //   yarn.scheduler.minimum-allocation-vcores, yarn.scheduler.increment-allocation-vcores
+    private void verifyAMResource(GetNewApplicationResponse applicationResponse, ClientArguments arguments)
+            throws ResourceLimitException{
         int memoryCapability = applicationResponse.getMaximumResourceCapability().getMemory();
-        if (AM_MIN_MEMEORY > memoryCapability) { // 256 for AM
+        int coreCapability = applicationResponse.getMaximumResourceCapability().getVirtualCores();
+        if (AM_MIN_MEMEORY + arguments.getInstances() * arguments.getMemory() > memoryCapability) { // 256 for AM
+            throw new ResourceLimitException();
+        }
+        if (AM_MIN_CORE + arguments.getInstances() * arguments.getCpu() > coreCapability) {
             throw new ResourceLimitException();
         }
     }
 
-    private Map<String, LocalResource> prepareLocalResource(ApplicationId applicationId, ClientArguments arguments) throws Exception {
+    protected Map<String, LocalResource> prepareLocalResource(ApplicationId applicationId, ClientArguments arguments) throws Exception {
         FileSystem fs = FileSystem.get(this.yarnConfiguration);
         Path dst = new Path(fs.getHomeDirectory(), STAGE_DIR + "/" + applicationId.toString());
         Map<String, LocalResource> localResources = new HashMap<>();
@@ -128,7 +183,7 @@ public class Client {
         }
     }
 
-    private Map<String, String> setupLaunchEnv(ApplicationId applicationId, ClientArguments arguments, Map<String, LocalResource> artifacts) {
+    protected Map<String, String> setupLaunchEnv(ClientArguments arguments, Map<String, LocalResource> artifacts) {
         Map<String, String> env = new HashMap<>();
         // setup command line
         env.put(AM_ENV_COMMANDLINE, arguments.getCommand());
@@ -144,7 +199,7 @@ public class Client {
         }
         env.put(ApplicationConstants.Environment.CLASSPATH.toString(), classPathEnv.toString());
         // setup custom environment
-        env.putAll(arguments.getAMEnvironments());
+        env.putAll(arguments.getaMEnvironments());
         // setup executor environment with EXECUTOR_LAUNCH_ENV_PREFIX
         for (Map.Entry<String, String> entry: arguments.getExecutorEnvironments().entrySet()) {
             env.put(EXECUTOR_LAUNCH_ENV_PREFIX + entry.getKey(), entry.getValue());
@@ -177,12 +232,12 @@ public class Client {
         return env;
     }
 
-    private List<String> prepareApplicationMasterCommands(ApplicationId applicationId, ClientArguments arguments) {
+    protected List<String> prepareApplicationMasterCommands(ClientArguments arguments) {
         List<String> commands = new ArrayList<>();
         commands.add(ApplicationConstants.Environment.JAVA_HOME.$$() + "/bin/java");
         commands.add("-server");
         commands.add("-Xmx" + AM_MIN_MEMEORY + "m");
-        Path tmpDir = new Path(ApplicationConstants.Environment.PWD.$$(), this.yarnConfiguration.DEFAULT_CONTAINER_TEMP_DIR);
+        Path tmpDir = new Path(ApplicationConstants.Environment.PWD.$$(), YarnConfiguration.DEFAULT_CONTAINER_TEMP_DIR);
         commands.add("-Djava.io.tmpdir=" + tmpDir);
         // TODO support custom java options
         commands.add(arguments.getApplicationMasterClass());// main class
@@ -202,14 +257,13 @@ public class Client {
         return commands;
     }
 
-    private ContainerLaunchContext createAmContainerLaunchContext(GetNewApplicationResponse appResponse, ClientArguments arguments) throws Exception {
-        ApplicationId appId = appResponse.getApplicationId();
+    protected ContainerLaunchContext createAmContainerLaunchContext(ApplicationId appId, ClientArguments arguments) throws Exception {
         logger.info("Preparing local resource");
         Map<String, LocalResource> localResource = prepareLocalResource(appId, arguments);
         logger.info("Setup launch environment");
-        Map<String, String> envs = setupLaunchEnv(appId, arguments ,localResource);
+        Map<String, String> envs = setupLaunchEnv(arguments ,localResource);
         logger.info("Preparing commands for application master");
-        List<String> commands = prepareApplicationMasterCommands(appId, arguments);
+        List<String> commands = prepareApplicationMasterCommands(arguments);
         ContainerLaunchContext clc = Records.newRecord(ContainerLaunchContext.class);
         clc.setLocalResources(localResource);
         clc.setEnvironment(envs);
