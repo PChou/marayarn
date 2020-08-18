@@ -7,9 +7,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Cli {
     static final Logger logger = LoggerFactory.getLogger(Cli.class);
+    static final Pattern fragment = Pattern.compile("#.*$");
 
     static Options buildOptions() {
         Options options = new Options();
@@ -47,7 +50,12 @@ public class Cli {
     }
 
     static boolean isArchive(String name) {
-        return name.endsWith(".tar.gz") || name.endsWith(".zip");
+        Matcher fragmentMatcher = fragment.matcher(name);
+        String clearFragment = name;
+        if (fragmentMatcher.find()) {
+            clearFragment = fragmentMatcher.replaceFirst("");
+        }
+        return clearFragment.endsWith(".tar.gz") || clearFragment.endsWith(".zip");
     }
 
     static ClientArguments toClientArguments(CommandLine commandLine) throws InvalidCommandLineException {

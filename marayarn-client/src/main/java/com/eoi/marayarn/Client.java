@@ -155,7 +155,7 @@ public class Client {
         // 上传AM
         Path src = new Path(arguments.getApplicationMasterJar());
         Path destPath = copyFileToRemote(dst, src);
-        addLocalResource(localResources, AM_JAR_KEY, destPath, LocalResourceType.FILE);
+        addLocalResource(localResources, AM_JAR_KEY, destPath, LocalResourceType.FILE, LocalResourceVisibility.APPLICATION);
         // 上传自定义资源
         for (Artifact artifact: arguments.getArtifacts()) {
             String localPath = artifact.getLocalPath();
@@ -168,7 +168,7 @@ public class Client {
                 sFile = new Path(removeFragment);
             }
             Path dFile = copyFileToRemote(dst, sFile);
-            addLocalResource(localResources, fragment, dFile, artifact.getType());
+            addLocalResource(localResources, fragment, dFile, artifact.getType(), artifact.getVisibility());
         }
         return localResources;
     }
@@ -293,13 +293,13 @@ public class Client {
      * @param type
      */
     private void addLocalResource(Map<String, LocalResource> localResourceMap,
-                                  String key, Path destPath, LocalResourceType type) {
+                                  String key, Path destPath, LocalResourceType type, LocalResourceVisibility visibility) {
         try {
             FileSystem fs = FileSystem.get(destPath.toUri(), this.yarnConfiguration);
             FileStatus destStatus = fs.getFileStatus(destPath);
             LocalResource localResource = Records.newRecord(LocalResource.class);
             localResource.setType(type);
-            localResource.setVisibility(LocalResourceVisibility.APPLICATION);
+            localResource.setVisibility(visibility);
             localResource.setResource(ConverterUtils.getYarnUrlFromPath(destPath));
             localResource.setTimestamp(destStatus.getModificationTime());
             localResource.setSize(destStatus.getLen());
