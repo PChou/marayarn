@@ -13,7 +13,6 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class ApplicationHandler extends ApiHandler {
@@ -88,11 +87,14 @@ public class ApplicationHandler extends ApiHandler {
         appInfo.numAllocatedExecutors = applicationMaster.allocator.getAllocatedExecutors();
         appInfo.numPendingExecutors = applicationMaster.allocator.getNumPendingAllocate();
         appInfo.logUrl = applicationMaster.getAMContainerLogs();
-        List<ContainerInfo> containers = new ArrayList<>();
+        appInfo.containers = new ArrayList<>();
         for (YarnAllocator.ContainerAndState cas: applicationMaster.allocator.getContainers()) {
-            containers.add(ContainerInfo.fromContainer(cas, applicationMaster.webSchema, applicationMaster.user));
+            appInfo.containers.add(ContainerInfo.fromContainer(cas, applicationMaster.webSchema, applicationMaster.user));
         }
-        appInfo.containers = containers;
+        appInfo.completedContainers = new ArrayList<>();
+        for (YarnAllocator.ContainerAndState cas: applicationMaster.allocator.getCompletedContainers()) {
+            appInfo.completedContainers.add(ContainerInfo.fromContainer(cas, applicationMaster.webSchema, applicationMaster.user));
+        }
         return appInfo;
     }
 }

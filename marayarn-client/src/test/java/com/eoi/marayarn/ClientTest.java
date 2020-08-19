@@ -46,11 +46,10 @@ public class ClientTest {
         Assert.assertEquals("hdfs://eoiNameService", fs);
     }
 
-
     @Test
     public void clientTest_simple_shell_command() throws Exception {
         ClientArguments arguments = new ClientArguments();
-        arguments.setApplicationMasterJar(getProjectRoot() + "/marayarn-am/target/" + AM_JAR_NAME);
+        arguments.setApplicationMasterJar("file://" + getProjectRoot() + "/marayarn-am/target/" + AM_JAR_NAME);
         arguments.setApplicationName("marayarn_test1");
         arguments.setHadoopConfDir(getProjectRoot() + "/hadoop");
         arguments.setCommand("while true; do date; sleep 5; done");
@@ -59,30 +58,6 @@ public class ClientTest {
         System.out.println(report.getTrackingUrl());
     }
 
-    @Test
-    public void clientTest_() throws Exception {
-        ClientArguments arguments = new ClientArguments();
-        arguments.setApplicationMasterJar(getProjectRoot() + "/marayarn-am/target/" + AM_JAR_NAME);
-        arguments.setApplicationName("marayarn_test2");
-        List<Artifact> artifacts = new ArrayList<>();
-        Artifact routerTar = new Artifact()
-                .setLocalPath("file:///Users/pchou/Projects/java/marayarn/router-2.1.0.tar.gz")
-                .setType(LocalResourceType.ARCHIVE);
-        Artifact applicationYaml = new Artifact()
-                .setLocalPath("file:///Users/pchou/Projects/java/marayarn/application.yml")
-                .setType(LocalResourceType.FILE);
-        Artifact logback = new Artifact()
-                .setLocalPath("file:///Users/pchou/Projects/java/marayarn/logback.xml")
-                .setType(LocalResourceType.FILE);
-        artifacts.add(routerTar);
-        artifacts.add(applicationYaml);
-        artifacts.add(logback);
-        arguments.setArtifacts(artifacts);
-        arguments.setCommand("{{JAVA_HOME}}/bin/java -jar -Dlogback.configurationFile=logback.xml router-2.1.0.tar.gz/router/router-*.jar application.yml");
-        Client client = new Client();
-        ApplicationReport report = client.launch(arguments);
-        System.out.println(report.getTrackingUrl());
-    }
 
     @Test
     public void clientTest3() throws Exception {

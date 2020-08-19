@@ -19,6 +19,7 @@ public class YarnAllocator {
     // All RM requests are issued with same priority : we do not (yet) have any distinction between
     // request types (like map/reduce in hadoop for example)
     private static final Priority RM_REQUEST_PRIORITY = Priority.newInstance(1);
+    private static final int RESERVE_COMPLETED_CONTAINER_SIZE = 50;
     private Configuration conf;
     private AMRMClient<AMRMClient.ContainerRequest> amrmClient;
     private NMClient nmClient;
@@ -27,6 +28,7 @@ public class YarnAllocator {
     private ThreadPoolExecutor launcherPool;
     private Resource containerResource;
     public Map<ContainerId, ContainerAndState> allocatedContainers;
+    public Queue<ContainerAndState> completedContainers;
 
     // 状态
     public int targetNumExecutors = 0;
@@ -54,6 +56,7 @@ public class YarnAllocator {
         this.targetNumExecutors = arguments.numExecutors;
         this.containerResource = Resource.newInstance(arguments.executorMemory, arguments.executorCores);
         this.allocatedContainers = new HashMap<>();
+        this.completedContainers = new LinkedList<>();
         this.nmClient = NMClient.createNMClient();
         this.nmClient.init(this.conf);
         this.nmClient.start();
@@ -87,6 +90,10 @@ public class YarnAllocator {
             containers.add(container.getValue());
         }
         return containers;
+    }
+
+    public synchronized List<ContainerAndState> getCompletedContainers() {
+        return new ArrayList<>(this.completedContainers);
     }
 
     public synchronized void allocateResources() throws Exception {
@@ -140,7 +147,11 @@ public class YarnAllocator {
                     containerId,
                     status.getState(),
                     status.getExitStatus());
+            ContainerAndState removed = allocatedContainers.get(status.getContainerId());
             allocatedContainers.remove(status.getContainerId());
+            if (removed != null) {
+                pushToCompletedContainers(removed);
+            }
             if (status.getExitStatus() == -103 || status.getExitStatus() == -104) {
                 logger.warn("Container killed by YARN for exceeding memory limits");
             } else if (status.getExitStatus() != 0) {
@@ -196,7 +207,8 @@ public class YarnAllocator {
                                 logger.info("Stopping and release container {} on node {}", c.getKey(), c.getValue().container.getNodeId());
                                 nmClient.stopContainer(c.getKey(), c.getValue().container.getNodeId());
                                 amrmClient.releaseAssignedContainer(c.getKey());
-                                removingContainerIds.add(c.getKey());
+                                // stop should trigger handleCompleted
+                                // removingContainerIds.add(c.getKey());
                                 sub--;
                             } catch (Exception ex) {
                                 logger.error("Failed to stop container {}", c.getKey(), ex);
@@ -274,6 +286,12 @@ public class YarnAllocator {
         return false;
     }
 
+    private void pushToCompletedContainers(ContainerAndState cas) {
+        if (completedContainers.size() >= RESERVE_COMPLETED_CONTAINER_SIZE) {
+            completedContainers.poll();
+        }
+        completedContainers.add(cas);
+    }
 
     public static class ContainerAndState {
         public Container container;

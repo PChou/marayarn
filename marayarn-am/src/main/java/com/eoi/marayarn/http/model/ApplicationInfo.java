@@ -15,4 +15,5 @@ public class ApplicationInfo {
     public int numAllocatedExecutors;
     public int numPendingExecutors;
     public List<ContainerInfo> containers;
+    public List<ContainerInfo> completedContainers;
 }
