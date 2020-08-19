@@ -113,6 +113,7 @@ public class Client {
         // Verify whether the cluster has enough resources for our am and executor
         verifyAMResource(newAppResponse, arguments);
         logger.info("Setting up container launch context for our AM");
+        checkYarnQueues(this.yarnClient, arguments.getQueue());
         ContainerLaunchContext amLaunchContext = createAmContainerLaunchContext(newAppResponse.getApplicationId(), arguments);
         // prepare and submit am
         ApplicationSubmissionContext submissionContext = newApp.getApplicationSubmissionContext();
@@ -123,6 +124,7 @@ public class Client {
         submissionContext.setAMContainerSpec(amLaunchContext);
         submissionContext.setApplicationType("MARAYARN");
         // submissionContext.setMaxAppAttempts();
+        submissionContext.setQueue(arguments.getQueue());
         Resource capability = Records.newRecord(Resource.class);
         capability.setMemory(AM_MIN_MEMEORY);
         capability.setVirtualCores(AM_MIN_CORE);
@@ -130,6 +132,36 @@ public class Client {
         logger.info("Submitting application {}", newAppResponse.getApplicationId());
         this.yarnClient.submitApplication(submissionContext);
         return this.yarnClient.getApplicationReport(submissionContext.getApplicationId());
+    }
+
+    private void checkYarnQueues(YarnClient yarnClient, String targetQueue) {
+        try {
+            List<QueueInfo> queues = yarnClient.getAllQueues();
+            if (!queues.isEmpty() && targetQueue != null) { // check only if there are queues configured in yarn and for this session.
+                boolean queueFound = false;
+                StringBuilder queueNames = new StringBuilder();
+                for (QueueInfo queue : queues) {
+                    if (queue.getQueueName().equals(targetQueue)) {
+                        queueFound = true;
+                        break;
+                    }
+                    if(queueNames.length() > 0) {
+                        queueNames.append(", ");
+                    }
+                    queueNames.append(queue.getQueueName());
+                }
+                if (!queueFound) {
+                    logger.warn("The specified queue '{}' does not exist. Available queues: {}", targetQueue, queueNames.toString());
+                }
+            } else {
+                logger.debug("The YARN cluster does not have any queues configured");
+            }
+        } catch (Throwable e) {
+            logger.warn("Error while getting queue information from YARN", e);
+            if (logger.isDebugEnabled()) {
+                logger.debug("Error details", e);
+            }
+        }
     }
 
     // TODO: the following configuration will affect the final resource allocation
