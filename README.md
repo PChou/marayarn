@@ -26,12 +26,12 @@ make package
 
 - ApplicationMaster: marayarn-am/target/marayarn-am-1.0-SNAPSHOT-jar-with-dependencies.jar
 
-- Cli命令行工具：marayarn-client-cli/target/marayarn-cli-1.0-SNAPSHOT.tar.gz
+- Cli命令行工具：marayarn-cli/target/marayarn-cli-1.0-SNAPSHOT.tar.gz
 
 解压Cli命令行工具：
 
 ```sh
-tar -zxf marayarn-client-cli/target/marayarn-cli-1.0-SNAPSHOT.tar.gz
+tar -zxf marayarn-cli/target/marayarn-cli-1.0-SNAPSHOT.tar.gz
 ```
 
 

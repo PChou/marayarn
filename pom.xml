@@ -11,7 +11,7 @@
   <modules>
     <module>marayarn-client</module>
     <module>marayarn-am</module>
-    <module>marayarn-client-cli</module>
+    <module>marayarn-cli</module>
     <module>marayarn-common</module>
   </modules>
 

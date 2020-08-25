@@ -22,3 +22,4 @@ logs/
 .DS_Store
 dependency-reduced-pom.xml
 hadoop/
+marayarn/
