@@ -11,6 +11,7 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpRequestDecoder;
 import io.netty.handler.codec.http.HttpResponseEncoder;
+import io.netty.handler.stream.ChunkedWriteHandler;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import io.netty.util.concurrent.EventExecutorGroup;
 import org.apache.commons.cli.*;
@@ -61,7 +62,7 @@ public class MaraApplicationMaster {
                 .addLast("http-decoder", new HttpRequestDecoder()) // 请求消息解码器
                 .addLast("http-aggregator", new HttpObjectAggregator(512*1024)) // 目的是将多个消息转换为单一的request或者response对象
                 .addLast("http-encoder", new HttpResponseEncoder())//响应解码器
-                // .addLast("http-chunked",new ChunkedWriteHandler())//目的是支持异步大文件传输
+                .addLast("http-chunked",new ChunkedWriteHandler())//目的是支持异步大文件传输
                 .addLast(eventHandlerGroup, new HttpRequestHandler(this));
     }
 

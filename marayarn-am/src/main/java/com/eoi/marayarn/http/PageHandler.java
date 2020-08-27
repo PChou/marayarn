@@ -2,14 +2,25 @@ package com.eoi.marayarn.http;
 
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import org.apache.commons.io.IOUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 public class PageHandler implements Handler {
     public static final String WEB_ROOT = "/web";
+
+    private static final Map<String, String> mime = new HashMap<>();
+    static {
+        mime.put(".html", "text/html; charset=UTF-8");
+        mime.put(".css", "text/css");
+        mime.put(".js", "text/javascript");
+        mime.put(".woff", "font/woff");
+        mime.put(".ttf", "font/ttf");
+    }
 
     @Override
     public Map<String, String> match(String uri, HttpMethod method) {
@@ -27,10 +38,14 @@ public class PageHandler implements Handler {
         if (indexHtmlStream == null)
             throw new HandlerErrorException(HttpResponseStatus.NOT_FOUND, "resource not found");
         try {
-            int byteCount = indexHtmlStream.available();
-            byte[] content = new byte[byteCount];
-            indexHtmlStream.read(content);
-            return new ProcessResult(content, "text/html; charset=UTF-8");
+            byte[] content = IOUtils.toByteArray(indexHtmlStream);
+            int i = urlParams.get("path").lastIndexOf('.');
+            if (i < 0) {
+                return new ProcessResult(content, "text/html; charset=UTF-8");
+            } else {
+                return new ProcessResult(content,
+                        mime.getOrDefault(urlParams.get("path").substring(i), "text/html; charset=UTF-8"));
+            }
         } catch (IOException ex) {
             throw new HandlerErrorException(HttpResponseStatus.INTERNAL_SERVER_ERROR, ex.toString());
         }

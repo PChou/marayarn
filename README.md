@@ -96,6 +96,12 @@ HADOOP_CONF_DIR=$PWD/hadoop marayarn/marayarn -am file:///$PWD/marayarn-am/targe
 
 通过Tracking url查看应用状态：
 
+http://node5:8088/proxy/application_1595242857530_1228
+
+![](doc/am-ui.png)
+
+通过接口可以获得json状态信息
+
 ```sh
 curl http://node5:8088/proxy/application_1595242857530_1228/api/app
 ```
@@ -195,9 +201,9 @@ Logstash could not be started because there is already another instance using th
 
 ## Roadmap
 
-- [ ] yarn-queue支持
 - [ ] 提交之前评估资源是否够用
 - [ ] client sdk增强，client sdk支持状态查询、扩缩容、变更配置、停止
 - [ ] cli对应支持增强后的client sdk
 - [ ] 设计和实现一个类似marathon的管理界面，提供更高层次的RESTful接口，方便管理应用
 - [ ] 文档和注释增强
+- [ ] 用户/kerberos支持
