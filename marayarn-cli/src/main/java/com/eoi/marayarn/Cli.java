@@ -36,6 +36,10 @@ public class Cli {
                 .desc("Executor launch environment variable, ex: -Ea=b").build();
         Option amJars = new com.eoi.marayarn.OptionBuilder("am").hasArg(true).required()
                 .desc("ApplicationMaster jar path, support [file|hdfs|http|https|ftp]://<user>:<password>@host:port...").build();
+        Option principal = new com.eoi.marayarn.OptionBuilder("principal").hasArg(true)
+                .desc("Principal to be used to login to KDC, while running secure HDFS").build();
+        Option keytab = new com.eoi.marayarn.OptionBuilder("keytab").hasArg(true)
+                .desc("The full path to the file that contains the keytab for the principal specified above").build();
         options.addOption(help);
         options.addOption(name);
         options.addOption(queue);
@@ -46,6 +50,8 @@ public class Cli {
         options.addOption(command);
         options.addOption(executorEnv);
         options.addOption(amJars);
+        options.addOption(principal);
+        options.addOption(keytab);
         return options;
     }
 
@@ -75,6 +81,8 @@ public class Cli {
         clientArguments.setCpu(Integer.parseInt(commandLine.getOptionValue("cpu", "1")));
         clientArguments.setMemory(Integer.parseInt(commandLine.getOptionValue("memory", "512")));
         clientArguments.setInstances(Integer.parseInt(commandLine.getOptionValue("instance", "1")));
+        clientArguments.setPrincipal(commandLine.getOptionValue("principal", null));
+        clientArguments.setKeytab(commandLine.getOptionValue("keytab", null));
         Properties envsProps = commandLine.getOptionProperties("E");
         Map<String, String> executorEnvs = new HashMap<>();
         if (envsProps != null) {

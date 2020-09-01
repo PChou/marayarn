@@ -2,6 +2,8 @@ package com.eoi.marayarn;
 
 import org.apache.hadoop.fs.*;
 import org.apache.hadoop.fs.permission.FsPermission;
+import org.apache.hadoop.security.Credentials;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.api.protocolrecords.GetNewApplicationResponse;
 import org.apache.hadoop.yarn.api.records.*;
@@ -13,12 +15,16 @@ import org.apache.hadoop.yarn.util.Records;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
+import java.security.PrivilegedExceptionAction;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -55,7 +61,26 @@ public class Client {
      */
     public ApplicationReport launch(ClientArguments arguments) throws Exception {
         checkArguments(arguments);
-        return submitApplication(arguments);
+        initConfiguration(arguments);
+        UserGroupInformation.setConfiguration(this.yarnConfiguration);
+        if (arguments.getPrincipal() != null && !arguments.getPrincipal().isEmpty()
+                && arguments.getKeytab() != null && !arguments.getKeytab().isEmpty()) {
+            UserGroupInformation ugi = null;
+            try {
+                logger.info("Login from {} with keytab {}", arguments.getPrincipal(), arguments.getKeytab());
+                ugi = UserGroupInformation.loginUserFromKeytabAndReturnUGI(arguments.getPrincipal(), arguments.getKeytab());
+            } catch (IOException ex) {
+                logger.warn("Failed to login user from keytab: {}({})", arguments.getPrincipal(), arguments.getKeytab());
+            }
+            if (ugi != null) {
+                logger.info("Submiting application via user {}", ugi.getUserName());
+                return ugi.doAs((PrivilegedExceptionAction<ApplicationReport>) () -> submitApplication(arguments));
+            } else {
+                throw new Exception(String.format("Failed to login user from keytab: %s(%s)", arguments.getPrincipal(), arguments.getKeytab()));
+            }
+        } else {
+            return submitApplication(arguments);
+        }
     }
 
     /**
@@ -102,7 +127,6 @@ public class Client {
     }
 
     protected ApplicationReport submitApplication(ClientArguments arguments) throws Exception {
-        initConfiguration(arguments);
         this.yarnClient.init(this.yarnConfiguration);
         this.yarnClient.start();
         logger.info("Started yarn client and creating application");
@@ -289,7 +313,8 @@ public class Client {
         return commands;
     }
 
-    protected ContainerLaunchContext createAmContainerLaunchContext(ApplicationId appId, ClientArguments arguments) throws Exception {
+    protected ContainerLaunchContext createAmContainerLaunchContext(ApplicationId appId, ClientArguments arguments)
+            throws Exception {
         logger.info("Preparing local resource");
         Map<String, LocalResource> localResource = prepareLocalResource(appId, arguments);
         logger.info("Setup launch environment");
@@ -300,7 +325,14 @@ public class Client {
         clc.setLocalResources(localResource);
         clc.setEnvironment(envs);
         clc.setCommands(commands);
-
+        if (arguments.getPrincipal() != null && !arguments.getPrincipal().isEmpty()
+                && arguments.getKeytab() != null && !arguments.getKeytab().isEmpty()) {
+            logger.info("Preparing for kerberos principal {}({}) and set hdfs delegation token", arguments.getPrincipal(), arguments.getKeytab());
+            Credentials creds = UserGroupInformation.getCurrentUser().getCredentials();
+            FileSystem defaultFS = FileSystem.get(yarnConfiguration);
+            defaultFS.addDelegationTokens("yarn", creds);
+            clc.setTokens(ByteBuffer.wrap(serializeCreds(creds)));
+        }
         logger.info("===============================================================================");
         logger.info("Yarn AM launch context:");
         logger.info("    env:");
@@ -386,5 +418,12 @@ public class Client {
         }
 
         return srcHost.equals(dstHost) && srcUri.getPort() == dstUri.getPort();
+    }
+
+    private byte[] serializeCreds(Credentials creds) throws IOException {
+        ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+        DataOutputStream dataStream = new DataOutputStream(byteStream);
+        creds.writeTokenStorageToStream(dataStream);
+        return byteStream.toByteArray();
     }
 }

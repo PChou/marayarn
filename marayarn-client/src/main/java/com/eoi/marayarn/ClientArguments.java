@@ -82,6 +82,14 @@ public class ClientArguments {
      *    dir/logstash/bin/logstash -e 'input { stdin { } } output { stdout {} }'
      */
     private String command;
+    /**
+     * kerberos principal
+     */
+    private String principal;
+    /**
+     * kerberos keytab file local path
+     */
+    private String keytab;
 
     public String getApplicationMasterJar() {
         return applicationMasterJar;
@@ -185,6 +193,21 @@ public class ClientArguments {
         this.command = command;
     }
 
+    public String getPrincipal() {
+        return principal;
+    }
+
+    public void setPrincipal(String principal) {
+        this.principal = principal;
+    }
+
+    public String getKeytab() {
+        return keytab;
+    }
+
+    public void setKeytab(String keytab) {
+        this.keytab = keytab;
+    }
 
     private void checkIfNullOrEmpty(String t, String literal) throws InvalidClientArgumentException {
         if (t == null || t.isEmpty()) {

@@ -1,6 +1,9 @@
 package com.eoi.marayarn;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.io.DataOutputBuffer;
+import org.apache.hadoop.security.Credentials;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.api.records.*;
 import org.apache.hadoop.yarn.client.api.NMClient;
@@ -10,7 +13,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import static com.eoi.marayarn.Constants.*;
 
+import java.io.IOException;
 import java.net.URI;
+import java.nio.ByteBuffer;
 import java.util.*;
 
 public class ExecutorRunnable implements Runnable {
@@ -109,6 +114,15 @@ public class ExecutorRunnable implements Runnable {
             }
         }
         context.setEnvironment(executorEnvs);
+        // set credentials
+        try (DataOutputBuffer dob = new DataOutputBuffer()){
+            // pass credential to executor container
+            Credentials credentials = UserGroupInformation.getCurrentUser().getCredentials();
+            credentials.writeTokenStorageToStream(dob);
+            context.setTokens(ByteBuffer.wrap(dob.getData()));
+        } catch (IOException ex) {
+            logger.warn("Failed to set credential for ContainerLaunchContext", ex);
+        }
         try {
             nmClient.startContainer(container, context);
         } catch(Exception ex) {

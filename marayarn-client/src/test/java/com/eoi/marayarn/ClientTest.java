@@ -51,13 +51,14 @@ public class ClientTest {
         ClientArguments arguments = new ClientArguments();
         arguments.setApplicationMasterJar("file://" + getProjectRoot() + "/marayarn-am/target/" + AM_JAR_NAME);
         arguments.setApplicationName("marayarn_test1");
-        arguments.setHadoopConfDir(getProjectRoot() + "/hadoop");
+        arguments.setHadoopConfDir(getProjectRoot() + "/hadoop-kerberos");
+        arguments.setPrincipal("mara@ALANWANG.COM");
+        arguments.setKeytab(getProjectRoot() + "/hadoop-kerberos/mara.keytab");
         arguments.setCommand("while true; do date; sleep 5; done");
         Client client = new Client();
         ApplicationReport report = client.launch(arguments);
         System.out.println(report.getTrackingUrl());
     }
-
 
     @Test
     public void clientTest3() throws Exception {

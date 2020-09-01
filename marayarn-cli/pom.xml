@@ -56,9 +56,11 @@
               <mainClass>com.eoi.marayarn.Cli</mainClass>
             </manifest>
           </archive>
-          <descriptorRefs>
-            <descriptorRef>jar-with-dependencies</descriptorRef>
-          </descriptorRefs>
+          <!-- assembly配置文件 -->
+          <descriptors>
+            <!-- https://stackoverflow.com/questions/47310215/merging-meta-inf-services-files-with-maven-assembly-plugin -->
+            <descriptor>release/release-jar-with-dependency.xml</descriptor>
+          </descriptors>
         </configuration>
         <executions>
           <execution>

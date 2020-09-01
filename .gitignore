@@ -22,4 +22,5 @@ logs/
 .DS_Store
 dependency-reduced-pom.xml
 hadoop/
+hadoop-kerberos/
 marayarn/
