@@ -12,7 +12,9 @@
 2. 一个负责管理当前提交应用的ApplicationMaster。支持通过RESTful接口进行状态查询、扩缩容、变更配置、停止。如果要更新资源文件，需要停止后，再通过client sdk提交新任务
 3. 一个cli命令行工具，通过命令行提交应用
 
+## 运行架构
 
+![](doc/runtime.png)
 
 ## 快速开始
 
@@ -43,7 +45,10 @@ tar -zxf marayarn-cli/target/marayarn-cli-1.0-SNAPSHOT.tar.gz
 下面的例子向yarn提交一个简单的shell命令，并指定了2个实例（假设`$PWD/hadoop`包含`core-site.xml`, `hdfs-site.xml`, `yarn-site.xml`）
 
 ```sh
-HADOOP_CONF_DIR=$PWD/hadoop marayarn/marayarn -am file:///$PWD/marayarn-am/target/marayarn-am-1.0-SNAPSHOT-jar-with-dependencies.jar -cpu 1 -memory 512 -name marayarn_test -instance 2 -cmd 'while true; do date; sleep 5; done'
+HADOOP_CONF_DIR=$PWD/hadoop marayarn/marayarn \
+-am file:///$PWD/marayarn-am/target/marayarn-am-1.0-SNAPSHOT-jar-with-dependencies.jar \
+-cpu 1 -memory 512 -name marayarn_test -instance 2 \
+-cmd 'while true; do date; sleep 5; done'
 ```
 
 终端显示提交任务的过程：
@@ -156,7 +161,12 @@ input { stdin { } } output { stdout {} }
 通过`Cli`提交应用：
 
 ```sh
-HADOOP_CONF_DIR=$PWD/hadoop marayarn/marayarn -am file:///$PWD/marayarn-am/target/marayarn-am-1.0-SNAPSHOT-jar-with-dependencies.jar -cpu 1 -memory 2048 -name logstash_test -instance 2 --file "http://.../logstash-7.3.0.tar.gz#dir" --file file:///Users/pchou/Projects/java/marayarn/simple.conf -cmd 'dir/logstash/bin/logstash -f simple.conf --path.data=.'
+HADOOP_CONF_DIR=$PWD/hadoop marayarn/marayarn \
+-am file:///$PWD/marayarn-am/target/marayarn-am-1.0-SNAPSHOT-jar-with-dependencies.jar \
+-cpu 1 -memory 2048 -name logstash_test -instance 2 \
+--file "http://.../logstash-7.3.0.tar.gz#dir" \
+--file file:///Users/pchou/Projects/java/marayarn/simple.conf \
+-cmd 'dir/logstash/bin/logstash -f simple.conf --path.data=.'
 ```
 
 这里有几个特别要说明的特性：
@@ -194,10 +204,19 @@ Logstash could not be started because there is already another instance using th
 
 
 
+## 提交到kerberos认证的hadoop
 
-## 运行架构
+当hdfs和yarn开启kerberos认证时，提交任务需要指定principal和keytab。例如，将上面例子中的shell脚本提交到开启kerberos的yarn环境，使用如下命令
 
-![](doc/runtime.png)
+```sh
+HADOOP_CONF_DIR=$PWD/hadoop-kerberos marayarn/marayarn \
+-am file:///$PWD/marayarn-am/target/marayarn-am-1.0-SNAPSHOT-jar-with-dependencies.jar \
+-cpu 1 -memory 512 -name marayarn_test -instance 2 \
+-cmd 'while true; do date; sleep 5; done' \
+-principal mara@ALANWANG.COM \
+-keytab $PWD/hadoop-kerberos/mara.keytab
+```
+重点是`-principal`和`-keytab`参数，Client会登录并获得token，这样才能将资源文件上传到HDFS。相应的，在HDFS上需要创建一个principal对应的`HOME目录`，在本例中应当在HDFS上创建`/user/mara`，并且所属用户应该为`mara`。Client上传的所有资源文件会为与这个目录中。
 
 ## Roadmap
 
@@ -206,4 +225,3 @@ Logstash could not be started because there is already another instance using th
 - [ ] cli对应支持增强后的client sdk
 - [ ] 设计和实现一个类似marathon的管理界面，提供更高层次的RESTful接口，方便管理应用
 - [ ] 文档和注释增强
-- [ ] 用户/kerberos支持
