@@ -66,7 +66,7 @@ public class ApplicationHandler extends ApiHandler {
             } else if (action.equals("update")) {
                 ApplicationRequirement requirement = JsonUtil._mapper.readValue(body, ApplicationRequirement.class);
                 ApplicationMasterArguments arguments =
-                        requirement.mergeApplicationMasterArguments(applicationMaster.allocator.arguments);
+                        requirement.mergeApplicationMasterArguments(applicationMaster.allocator.getArguments());
                 applicationMaster.allocator.update(arguments);
                 return JsonUtil._mapper.writeValueAsBytes(AckResponse.OK);
             }
@@ -85,7 +85,7 @@ public class ApplicationHandler extends ApiHandler {
         appInfo.numTotalExecutors = applicationMaster.allocator.targetNumExecutors;
         appInfo.numRunningExecutors = applicationMaster.allocator.getRunningExecutors();
         appInfo.numAllocatedExecutors = applicationMaster.allocator.getAllocatedExecutors();
-        appInfo.numPendingExecutors = applicationMaster.allocator.getNumPendingAllocate();
+        appInfo.numPendingExecutors = applicationMaster.allocator.getPendingAllocations();
         appInfo.logUrl = applicationMaster.getAMContainerLogs();
         appInfo.containers = new ArrayList<>();
         for (YarnAllocator.ContainerAndState cas: applicationMaster.allocator.getContainers()) {

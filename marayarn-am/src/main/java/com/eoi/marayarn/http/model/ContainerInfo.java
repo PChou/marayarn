@@ -16,7 +16,7 @@ public class ContainerInfo {
             return null;
         ContainerInfo containerInfo = new ContainerInfo();
         containerInfo.Id = cas.container.getId().toString();
-        containerInfo.nodeId = cas.container.getNodeId().toString();
+        containerInfo.nodeId = cas.container.getNodeId().getHost();
         containerInfo.nodeHttpAddress = cas.container.getNodeHttpAddress();
         containerInfo.logUrl = String.format("%s://%s/node/containerlogs/%s/%s", webSchema, containerInfo.nodeHttpAddress, containerInfo.Id, user);
         containerInfo.vcore = cas.container.getResource().getVirtualCores();

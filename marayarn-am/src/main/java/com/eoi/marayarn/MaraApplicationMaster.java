@@ -157,10 +157,19 @@ public class MaraApplicationMaster {
                 .desc("Memory of every executor in MB").build();
         Option queue = new com.eoi.marayarn.OptionBuilder("queue").hasArg(true).argName("queueName")
                 .desc("queueName").build();
+        Option principal = new com.eoi.marayarn.OptionBuilder("principal").hasArg(true).argName("string")
+                .desc("The principal").build();
+        Option keytab = new com.eoi.marayarn.OptionBuilder("keytab").hasArg(true).argName("string")
+                .desc("The keytab").build();
+        Option constraints =  new com.eoi.marayarn.OptionBuilder("constraints").hasArg(true).argName("string")
+                .desc("Constraints of scheduler").build();
         options.addOption(instances);
         options.addOption(vcpu);
         options.addOption(memory);
         options.addOption(queue);
+        options.addOption(principal);
+        options.addOption(keytab);
+        options.addOption(constraints);
         return options;
     }
 
@@ -171,6 +180,9 @@ public class MaraApplicationMaster {
         arguments.executorMemory = getIntOrDefault(commandLine, "memory", 0);
         arguments.queue = commandLine.getOptionValue("queue");
         arguments.commandLine = System.getenv(AM_ENV_COMMANDLINE);
+        arguments.principal = commandLine.getOptionValue("principal");
+        arguments.keytab = commandLine.getOptionValue("keytab");
+        arguments.constraints = commandLine.getOptionValue("constraints");
         return arguments;
     }
 
@@ -195,6 +207,7 @@ public class MaraApplicationMaster {
         logger.info("Starting http server");
         applicationMaster.startHttpServer();
         Runtime.getRuntime().addShutdownHook(new Thread(applicationMaster::stopHttpServer));
+        applicationMaster.allocator = new YarnAllocator(arguments);
         logger.info("Initializing and registering Application Master");
         applicationMaster.initializeAM(arguments);
         applicationMaster.register();

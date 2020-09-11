@@ -90,6 +90,26 @@ public class ClientArguments {
      * kerberos keytab file local path
      */
     private String keytab;
+    /**
+     * like marathon Constraints
+     * https://mesosphere.github.io/marathon/docs/constraints.html
+     * 格式
+     * field,operator[,value]
+     * field 可以是node,rack
+     * operator 支持CLUSTER,LIKE,UNLIKE,IS,UNIQUE,GROUP_BY
+     * value一般是对应field的字符串或正则。对于CLUSTER, value可以不填;对于UNIQUE/GROUP_BY, value不需要填
+     * ie.
+     * node,CLUSTER: 随机选择一个node，所有实例部署到这个node上
+     * node,LIKE,vm319[0-9]: 实例分布在满足node名称为vm319[0-9]的节点上
+     * rack,IS,/rack1: 实例分布在/rack1的节点上
+     * rack,UNIQUE: 实例在每种rack中只能有唯一的实例
+     * node,UNIQUE: 实例在所有node上最多只有一个实例
+     * node,CLUSTER,vm3195: 同IS, 实例全部分布在vm3195上
+     * node,GROUP_BY: 实例按照node分散部署，相当于负载均衡的部署
+     *
+     * 未来可能引入AND,OR等逻辑组合
+     */
+    private String constraints;
 
     public String getApplicationMasterJar() {
         return applicationMasterJar;
@@ -207,6 +227,14 @@ public class ClientArguments {
 
     public void setKeytab(String keytab) {
         this.keytab = keytab;
+    }
+
+    public String getConstraints() {
+        return constraints;
+    }
+
+    public void setConstraints(String constraints) {
+        this.constraints = constraints;
     }
 
     private void checkIfNullOrEmpty(String t, String literal) throws InvalidClientArgumentException {

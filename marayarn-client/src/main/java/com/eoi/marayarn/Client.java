@@ -32,6 +32,8 @@ import java.util.regex.Pattern;
 import static com.eoi.marayarn.Constants.*;
 
 public class Client {
+
+
     public static final Logger logger = LoggerFactory.getLogger(Client.class);
     // Memory needed to launch the ApplicationMaster
     private static final int AM_MIN_MEMEORY = 256;
@@ -43,6 +45,7 @@ public class Client {
             FsPermission.createImmutable(Short.parseShort("644", 8));
     private static final String STAGE_DIR = ".stage";
     private static final String AM_JAR_KEY = "__marayarn_am__.jar";
+    private static final String AM_KEY_TAB = "__kt__.keytab";
     private static final Pattern fragment = Pattern.compile("#.*$");
 
     private final YarnClient yarnClient;
@@ -130,6 +133,10 @@ public class Client {
         this.yarnClient.init(this.yarnConfiguration);
         this.yarnClient.start();
         logger.info("Started yarn client and creating application");
+        List<NodeReport> nodeReports = this.yarnClient.getNodeReports();
+        for (NodeReport nodeReport: nodeReports) {
+            logger.info("node: {}, rack: {}, label: {}", nodeReport.getNodeId(), nodeReport.getRackName(), nodeReport.getNodeLabels());
+        }
         YarnClientApplication newApp = this.yarnClient.createApplication();
         GetNewApplicationResponse newAppResponse = newApp.getNewApplicationResponse();
         logger.info("Created application: {}, maxResourceCapability: {}",
@@ -146,7 +153,7 @@ public class Client {
             submissionContext.setQueue(arguments.getQueue());
         }
         submissionContext.setAMContainerSpec(amLaunchContext);
-        submissionContext.setApplicationType("MARAYARN");
+        submissionContext.setApplicationType(YARN_MARAYARN_APP_TYPE);
         // submissionContext.setMaxAppAttempts();
         submissionContext.setQueue(arguments.getQueue());
         Resource capability = Records.newRecord(Resource.class);
@@ -212,6 +219,13 @@ public class Client {
         Path src = new Path(arguments.getApplicationMasterJar());
         Path destPath = copyFileToRemote(dst, src);
         addLocalResource(localResources, AM_JAR_KEY, destPath, LocalResourceType.FILE, LocalResourceVisibility.APPLICATION);
+        // 上传keytab
+        if (arguments.getPrincipal() != null && !arguments.getPrincipal().isEmpty()
+                && arguments.getKeytab() != null && !arguments.getKeytab().isEmpty()) {
+            Path keyTabSrc = new Path(arguments.getKeytab());
+            Path keyTabDestPath = copyFileToRemote(dst, keyTabSrc);
+            addLocalResource(localResources, AM_KEY_TAB, keyTabDestPath, LocalResourceType.FILE, LocalResourceVisibility.APPLICATION);
+        }
         // 上传自定义资源
         for (Artifact artifact: arguments.getArtifacts()) {
             String localPath = artifact.getLocalPath();
@@ -239,7 +253,8 @@ public class Client {
         }
     }
 
-    protected Map<String, String> setupLaunchEnv(ClientArguments arguments, Map<String, LocalResource> artifacts) {
+    protected Map<String, String> setupLaunchEnv
+            (ClientArguments arguments, Map<String, LocalResource> artifacts) {
         Map<String, String> env = new HashMap<>();
         // setup command line
         env.put(AM_ENV_COMMANDLINE, arguments.getCommand());
@@ -303,9 +318,19 @@ public class Client {
         commands.add(String.format("%d", arguments.getCpu()));
         commands.add("--memory");
         commands.add(String.format("%d", arguments.getMemory()));
-        if (arguments.getQueue() != null && !arguments.getQueue().isEmpty()) {
+        if (!Utils.StringEmpty(arguments.getQueue())) {
             commands.add("--queue");
             commands.add(arguments.getQueue());
+        }
+        if (!Utils.StringEmpty(arguments.getConstraints()))  {
+            commands.add("--constraints");
+            commands.add(arguments.getConstraints());
+        }
+        if (!Utils.StringEmpty(arguments.getPrincipal()) && !Utils.StringEmpty(arguments.getKeytab())) {
+            commands.add("--principal");
+            commands.add(arguments.getPrincipal());
+            commands.add("--keytab");
+            commands.add(AM_KEY_TAB);
         }
         // ApplicationMaster arguments
         commands.add("1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stdout");
@@ -313,7 +338,8 @@ public class Client {
         return commands;
     }
 
-    protected ContainerLaunchContext createAmContainerLaunchContext(ApplicationId appId, ClientArguments arguments)
+    protected ContainerLaunchContext createAmContainerLaunchContext(
+            ApplicationId appId, ClientArguments arguments)
             throws Exception {
         logger.info("Preparing local resource");
         Map<String, LocalResource> localResource = prepareLocalResource(appId, arguments);
