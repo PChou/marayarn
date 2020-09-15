@@ -1,8 +1,5 @@
 package com.eoi.marayarn;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.module.SimpleModule;
 import org.apache.hadoop.yarn.api.records.Container;
 import org.apache.hadoop.yarn.api.records.ContainerId;
 
@@ -10,14 +7,6 @@ import java.util.*;
 
 
 public class ContainerLocation {
-    private static final ObjectMapper _mapper = new ObjectMapper();
-
-    static {
-        _mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        SimpleModule s = new SimpleModule();
-        _mapper.registerModule(s);
-    }
-
     private String[] node;
     private String[] rack;
     // top most instance count that can be allocate in this node and rack combination
