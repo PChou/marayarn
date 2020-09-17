@@ -12,7 +12,9 @@ public class MaraApplicationMasterTest {
     public void testOptions() throws Exception {
         Options options = MaraApplicationMaster.setupOptions();
         String[] args = new String[]{
-                "--cmd", "while true; do date; sleep 5; done",
+                "--constraints", "node,CLUSTER",
+                "--principal", "mara@AA.COM",
+                "--keytab", "__kt__.keytab",
                 "--cores", "2",
                 "--memory", "1024",
                 "--executors", "2",
@@ -25,6 +27,8 @@ public class MaraApplicationMasterTest {
         Assert.assertEquals(2, arguments.numExecutors);
         Assert.assertEquals(1024, arguments.executorMemory);
         Assert.assertEquals("q", arguments.queue);
-        Assert.assertEquals("while true; do date; sleep 5; done", arguments.commandLine);
+        Assert.assertEquals("node,CLUSTER", arguments.constraints);
+        Assert.assertEquals("mara@AA.COM", arguments.principal);
+        Assert.assertEquals("__kt__.keytab", arguments.keytab);
     }
 }
