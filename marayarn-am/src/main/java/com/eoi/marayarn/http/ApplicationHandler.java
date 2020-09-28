@@ -3,11 +3,7 @@ package com.eoi.marayarn.http;
 import com.eoi.marayarn.ApplicationMasterArguments;
 import com.eoi.marayarn.MaraApplicationMaster;
 import com.eoi.marayarn.YarnAllocator;
-import com.eoi.marayarn.http.model.AckResponse;
-import com.eoi.marayarn.http.model.ApplicationInfo;
-import com.eoi.marayarn.http.model.ApplicationRequirement;
-import com.eoi.marayarn.http.model.ContainerInfo;
-import com.fasterxml.jackson.core.type.TypeReference;
+import com.eoi.marayarn.http.model.*;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpResponseStatus;
 
@@ -17,8 +13,6 @@ import java.util.Map;
 
 public class ApplicationHandler extends ApiHandler {
     final MaraApplicationMaster applicationMaster;
-
-    static final String INSTANCES_KEY = "instances";
 
     public ApplicationHandler(MaraApplicationMaster applicationMaster) {
         this.applicationMaster = applicationMaster;
@@ -50,15 +44,8 @@ public class ApplicationHandler extends ApiHandler {
                 ApplicationInfo appInfo = getApplicationIfo();
                 return JsonUtil._mapper.writeValueAsBytes(appInfo);
             } else if (action.equals("scale")) {
-                int scale = 0;
-                try {
-                    Map<String, Object> request = JsonUtil._mapper.readValue(body, new TypeReference<Map<String, Object>>() {});
-                    Object instances = request.get(INSTANCES_KEY);
-                    scale = Integer.parseInt(instances.toString());
-                } catch (Exception ex) {
-                    throw new HandlerErrorException(HttpResponseStatus.BAD_REQUEST, "invalid parameter `instances`");
-                }
-                applicationMaster.allocator.scale(scale);
+                ScaleRequest request = JsonUtil._mapper.readValue(body, ScaleRequest.class);
+                applicationMaster.allocator.scaleAndKill(request.instances, request.containerIds);
                 return JsonUtil._mapper.writeValueAsBytes(AckResponse.OK);
             } else if (action.equals("stop")) {
                 applicationMaster.terminate();

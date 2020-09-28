@@ -8,6 +8,7 @@ import org.apache.hadoop.yarn.api.records.*;
 import org.apache.hadoop.yarn.client.api.AMRMClient;
 import org.apache.hadoop.yarn.client.api.NMClient;
 import org.apache.hadoop.yarn.client.api.YarnClient;
+import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.RackResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +18,7 @@ import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class YarnAllocator {
     private static Logger logger = LoggerFactory.getLogger(YarnAllocator.class);
@@ -157,6 +159,26 @@ public class YarnAllocator {
             return;
         }
         targetNumExecutors = num;
+    }
+
+    public synchronized void scaleAndKill(int num, List<String> killingContainerIds) {
+        if (killingContainerIds != null && killingContainerIds.size() > 0) {
+            List<ContainerId> ids = killingContainerIds.stream()
+                    .map(ConverterUtils::toContainerId).collect(Collectors.toList());
+            for (ContainerId id: ids) {
+                ContainerAndState cs = allocatedContainers.get(id);
+                if (cs != null) {
+                    try {
+                        nmClient.stopContainer(cs.container.getId(), cs.container.getNodeId());
+                    } catch (Exception ex) {
+                        logger.error(String.format("Failed to stop container %s", id), ex);
+                    }
+                } else {
+                    logger.warn("No match container found for {}", id);
+                }
+            }
+        }
+        scale(num);
     }
 
     public synchronized void update(ApplicationMasterArguments newArguments) {
