@@ -1,0 +1,49 @@
+server:
+  port: 8888
+
+spring:
+  application:
+    name: marayarn-web
+  datasource:
+    url: jdbc:mysql://localhost:3306/marayarn_db?useSSL=false&allowMultiQueries=true&characterEncoding=utf8
+    username: root
+    password: 1234
+    # 使用Druid连接池
+    type: com.alibaba.druid.pool.DruidDataSource
+    # Druid连接池配置信息
+    druid:
+      # 初始化连接池数量
+      initial-size: 1
+      # 最小连接池数量
+      min-idle: 1
+      # 最大连接池数量
+      maxActive: 4
+      # 配置间隔多久才进行一次检测，检测需要关闭的空闲连接，单位是毫秒
+      timeBetweenEvictionRunsMillis: 60000
+      # 配置一个连接在池中最小生存的时间，单位是毫秒
+      minEvictableIdleTimeMillis: 30000
+      # 用来检测连接是否有效，要求是一个查询语句。
+      validationQuery: SELECT 1 FROM DUAL
+      # 连接空闲时执行validationQuery检测(是否空闲根据timeBetweenEvictionRunsMillis等判断)
+      testWhileIdle: true
+      # 申请连接时执行validationQuery检测
+      testOnBorrow: false
+      # 归还连接时执行validationQuery检测
+      testOnReturn: false
+
+
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+#  config-location: classpath:/mybatis/config/mybatis-config.xml
+#  mapper-locations: classpath:/mybatis/mapper/*.xml
+
+logging.file: ./logs/${spring.application.name}.log
+logging:
+  file:
+    # 日志文件保留天数
+    max-history: 10
+  level:
+    root: INFO
+    com.eoi.marayarn.web: INFO
+
