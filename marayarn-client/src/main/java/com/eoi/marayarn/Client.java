@@ -15,10 +15,7 @@ import org.apache.hadoop.yarn.util.Records;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -31,8 +28,7 @@ import java.util.regex.Pattern;
 
 import static com.eoi.marayarn.Constants.*;
 
-public class Client {
-
+public class Client implements Closeable {
 
     public static final Logger logger = LoggerFactory.getLogger(Client.class);
     // Memory needed to launch the ApplicationMaster
@@ -56,6 +52,11 @@ public class Client {
         this.yarnConfiguration = new YarnConfiguration();
     }
 
+    @Override
+    public void close() throws IOException {
+        this.yarnClient.close();
+    }
+
     /**
      * launch an application
      * @param arguments arguments that tell how to start the application
@@ -63,7 +64,32 @@ public class Client {
      * @throws Exception ResourceLimitException: resource not available
      */
     public ApplicationReport launch(ClientArguments arguments) throws Exception {
-        checkArguments(arguments);
+        arguments.checkSubmit();
+        return doActionWithUGI(arguments, () -> submitApplication(arguments));
+    }
+
+    /**
+     * get an application
+     * @param arguments arguments that tell how to get the application
+     * @return ApplicationReport
+     * @throws Exception
+     */
+    public ApplicationReport get(ClientArguments arguments) throws Exception {
+        arguments.checkApp();
+        return doActionWithUGI(arguments, () -> getApplication(arguments));
+    }
+
+    /**
+     * kill an application
+     * @param arguments arguments that tell how to kill the application
+     * @throws Exception
+     */
+    public void kill(ClientArguments arguments) throws Exception {
+        arguments.checkApp();
+        doActionWithUGI(arguments, () -> killApplication(arguments));
+    }
+
+    private <T> T doActionWithUGI(ClientArguments arguments, ClientActionFunction<T> action) throws Exception {
         initConfiguration(arguments);
         UserGroupInformation.setConfiguration(this.yarnConfiguration);
         if (arguments.getPrincipal() != null && !arguments.getPrincipal().isEmpty()
@@ -76,23 +102,14 @@ public class Client {
                 logger.warn("Failed to login user from keytab: {}({})", arguments.getPrincipal(), arguments.getKeytab());
             }
             if (ugi != null) {
-                logger.info("Submiting application via user {}", ugi.getUserName());
-                return ugi.doAs((PrivilegedExceptionAction<ApplicationReport>) () -> submitApplication(arguments));
+                logger.info("do action via user {}", ugi.getUserName());
+                return ugi.doAs((PrivilegedExceptionAction<T>) () -> action.doAction());
             } else {
                 throw new Exception(String.format("Failed to login user from keytab: %s(%s)", arguments.getPrincipal(), arguments.getKeytab()));
             }
         } else {
-            return submitApplication(arguments);
+            return action.doAction();
         }
-    }
-
-    /**
-     * check and set some default value for the arguments,
-     * @param arguments client argument
-     * @throws InvalidClientArgumentException
-     */
-    public void checkArguments(ClientArguments arguments) throws InvalidClientArgumentException {
-        arguments.check();
     }
 
     protected void initConfiguration(ClientArguments arguments) {
@@ -163,6 +180,21 @@ public class Client {
         logger.info("Submitting application {}", newAppResponse.getApplicationId());
         this.yarnClient.submitApplication(submissionContext);
         return this.yarnClient.getApplicationReport(submissionContext.getApplicationId());
+    }
+
+    protected ApplicationReport getApplication(ClientArguments arguments) throws Exception {
+        this.yarnClient.init(this.yarnConfiguration);
+        this.yarnClient.start();
+        ApplicationId applicationId = ApplicationId.fromString(arguments.getApplicationId());
+        return this.yarnClient.getApplicationReport(applicationId);
+    }
+
+    protected Boolean killApplication(ClientArguments arguments) throws Exception {
+        this.yarnClient.init(this.yarnConfiguration);
+        this.yarnClient.start();
+        ApplicationId applicationId = ApplicationId.fromString(arguments.getApplicationId());
+        this.yarnClient.killApplication(applicationId);
+        return true;
     }
 
     private void checkYarnQueues(YarnClient yarnClient, String targetQueue) {
@@ -451,5 +483,10 @@ public class Client {
         DataOutputStream dataStream = new DataOutputStream(byteStream);
         creds.writeTokenStorageToStream(dataStream);
         return byteStream.toByteArray();
+    }
+
+    @FunctionalInterface
+    public interface ClientActionFunction<T> {
+        T doAction() throws Exception;
     }
 }
