@@ -42,3 +42,14 @@ CREATE TABLE `tb_group`  (
 );
 
 
+DROP TABLE IF EXISTS `tb_artifact`;
+CREATE TABLE `tb_artifact`  (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL,
+  `hdfs_addr` varchar(50) NULL,
+  `directory` varchar(100) NOT NULL,
+  `create_time` bigint(20) NOT NULL,
+  PRIMARY KEY (`id`)
+);
+
+
