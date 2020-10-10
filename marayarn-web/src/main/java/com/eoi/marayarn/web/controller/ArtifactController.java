@@ -1,7 +1,7 @@
 package com.eoi.marayarn.web.controller;
 
 import com.eoi.marayarn.web.base.ResponseResult;
-import com.eoi.marayarn.web.entity.body.UploadReq;
+import com.eoi.marayarn.web.entity.req.UploadReq;
 import com.eoi.marayarn.web.enums.MsgCode;
 import com.eoi.marayarn.web.exception.BizException;
 import com.eoi.marayarn.web.service.ArtifactService;

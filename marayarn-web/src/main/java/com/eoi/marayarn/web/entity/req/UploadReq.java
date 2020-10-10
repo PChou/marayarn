@@ -1,4 +1,4 @@
-package com.eoi.marayarn.web.entity.body;
+package com.eoi.marayarn.web.entity.req;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
