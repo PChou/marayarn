@@ -53,3 +53,13 @@ CREATE TABLE `tb_artifact`  (
 );
 
 
+DROP TABLE IF EXISTS `tb_group`;
+CREATE TABLE `tb_group`  (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `name` varchar(50) NOT NULL,
+  `parentId` bigint(20) NOT NULL DEFAULT -1,
+  `absolute_path` varchar(255) NOT NULL,
+  PRIMARY KEY (`id`)
+);
+
+
