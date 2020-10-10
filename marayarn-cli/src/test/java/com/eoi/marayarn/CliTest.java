@@ -11,7 +11,7 @@ import org.junit.Test;
 public class CliTest {
     @Test
     public void commandLineParseTest_1() throws Exception {
-        Options options = Cli.buildOptions();
+        Options options = SubmitOptions.buildOptions();
         String[] args = new String[]{
                 "--name", "marayarn",
                 "--am", "file:///Users/pchou/Projects/java/marayarn/marayarn-am/target/marayarn-am-1.0-SNAPSHOT-jar-with-dependencies.jar",
@@ -28,7 +28,7 @@ public class CliTest {
         };
         CommandLineParser parser = new GnuParser();
         CommandLine commandLine = parser.parse(options, args);
-        ClientArguments arguments = Cli.toClientArguments(commandLine);
+        ClientArguments arguments = SubmitOptions.toClientArguments(commandLine);
         Assert.assertEquals("file:///Users/pchou/Projects/java/marayarn/marayarn-am/target/marayarn-am-1.0-SNAPSHOT-jar-with-dependencies.jar", arguments.getApplicationMasterJar());
         Assert.assertEquals("marayarn", arguments.getApplicationName());
         Assert.assertEquals("while true; do date; sleep 5; done", arguments.getCommand());

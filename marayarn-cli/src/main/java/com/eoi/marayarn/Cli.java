@@ -2,137 +2,192 @@ package com.eoi.marayarn;
 
 import org.apache.commons.cli.*;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
-import org.apache.hadoop.yarn.api.records.LocalResourceType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class Cli {
     static final Logger logger = LoggerFactory.getLogger(Cli.class);
-    static final Pattern fragment = Pattern.compile("#.*$");
 
-    static Options buildOptions() {
-        Options options = new Options();
-        Option help = new com.eoi.marayarn.OptionBuilder("help").hasArg(false)
-                .desc("Print help").build();
-        Option name = new com.eoi.marayarn.OptionBuilder("name").hasArg(true).argName("name").required()
-                .desc("Set name of the Application").build();
-        Option queue = new com.eoi.marayarn.OptionBuilder("queue").hasArg(true).argName("name")
-                .desc("The queue name of resource which tasks run in").build();
-        Option cpu = new com.eoi.marayarn.OptionBuilder("cpu").hasArg(true).argName("int")
-                .desc("The vcpu core count of each task (not include am)").build();
-        Option memory = new com.eoi.marayarn.OptionBuilder("memory").hasArg(true).argName("int")
-                .desc("The memory in MB of each task (not include am)").build();
-        Option instance = new com.eoi.marayarn.OptionBuilder("instance").hasArg(true).argName("int")
-                .desc("The number of instance of the application (not include am)").build();
-        Option files = new com.eoi.marayarn.OptionBuilder("file").hasArgs().argName("file://<LocalPath>")
-                .desc("Artifacts that need upload to hdfs, support [file|hdfs|http|https|ftp]://<user>:<password>@host:port...").build();
-        Option command = new com.eoi.marayarn.OptionBuilder("cmd").hasArg(true).argName("cmd").required()
-                .desc("The command line").build();
-        Option executorEnv = new com.eoi.marayarn.OptionBuilder("E").numberOfArgs(2).valueSeparator('=')
-                .desc("Executor launch environment variable, ex: -Ea=b").build();
-        Option amJars = new com.eoi.marayarn.OptionBuilder("am").hasArg(true).required()
-                .desc("ApplicationMaster jar path, support [file|hdfs|http|https|ftp]://<user>:<password>@host:port...").build();
-        Option principal = new com.eoi.marayarn.OptionBuilder("principal").hasArg(true)
-                .desc("Principal to be used to login to KDC, while running secure HDFS").build();
-        Option keytab = new com.eoi.marayarn.OptionBuilder("keytab").hasArg(true)
-                .desc("The full path to the file that contains the keytab for the principal specified above").build();
-        Option constraints = new com.eoi.marayarn.OptionBuilder("constraints").hasArg(true)
-                .desc("The constraints string that describe the locality requirement. see document for more information").build();
-        options.addOption(help);
-        options.addOption(name);
-        options.addOption(queue);
-        options.addOption(cpu);
-        options.addOption(memory);
-        options.addOption(instance);
-        options.addOption(files);
-        options.addOption(command);
-        options.addOption(executorEnv);
-        options.addOption(amJars);
-        options.addOption(principal);
-        options.addOption(keytab);
-        options.addOption(constraints);
-        return options;
-    }
-
-    static boolean isArchive(String name) {
-        Matcher fragmentMatcher = fragment.matcher(name);
-        String clearFragment = name;
-        if (fragmentMatcher.find()) {
-            clearFragment = fragmentMatcher.replaceFirst("");
-        }
-        return clearFragment.endsWith(".tar.gz") || clearFragment.endsWith(".zip");
-    }
-
-    static ClientArguments toClientArguments(CommandLine commandLine) throws InvalidCommandLineException {
-        ClientArguments clientArguments = new ClientArguments();
-        if (!commandLine.hasOption("cmd")
-            || !commandLine.hasOption("name")
-            || !commandLine.hasOption("am")) {
-            throw new InvalidCommandLineException();
-        }
-        String cmd = commandLine.getOptionValue("cmd");
-        String name = commandLine.getOptionValue("name");
-        String amJar = commandLine.getOptionValue("am");
-        clientArguments.setCommand(cmd);
-        clientArguments.setApplicationName(name);
-        clientArguments.setApplicationMasterJar(amJar);
-        clientArguments.setQueue(commandLine.getOptionValue("queue"));
-        clientArguments.setCpu(Integer.parseInt(commandLine.getOptionValue("cpu", "1")));
-        clientArguments.setMemory(Integer.parseInt(commandLine.getOptionValue("memory", "512")));
-        clientArguments.setInstances(Integer.parseInt(commandLine.getOptionValue("instance", "1")));
-        clientArguments.setPrincipal(commandLine.getOptionValue("principal", null));
-        clientArguments.setKeytab(commandLine.getOptionValue("keytab", null));
-        clientArguments.setConstraints(commandLine.getOptionValue("constraints", null));
-        Properties envsProps = commandLine.getOptionProperties("E");
-        Map<String, String> executorEnvs = new HashMap<>();
-        if (envsProps != null) {
-            for (Map.Entry<Object, Object> item: envsProps.entrySet()) {
-                executorEnvs.put(item.getKey().toString(), item.getValue().toString());
-            }
-        }
-        clientArguments.setExecutorEnvironments(executorEnvs);
-        String[] files = commandLine.getOptionValues("file");
-        if (files != null) {
-            List<Artifact> artifacts = new ArrayList<>();
-            for (String file : files) {
-                Artifact artifact;
-                if (isArchive(file)) {
-                    artifact = new Artifact().setLocalPath(file).setType(LocalResourceType.ARCHIVE);
-                } else {
-                    artifact = new Artifact().setLocalPath(file).setType(LocalResourceType.FILE);
-                }
-                artifacts.add(artifact);
-            }
-            clientArguments.setArtifacts(artifacts);
-        }
-        return clientArguments;
-    }
+    // actions
+    static final String ACTION_SUBMIT = "submit";
+    static final String ACTION_STATUS = "status";
+    static final String ACTION_KILL = "kill";
+    static final String ACTION_INFO = "info";
+    static final String ACTION_SCALE = "scale";
 
     public static void main(String[] args) {
-        Options options = buildOptions();
-        CommandLineParser parser = new GnuParser();
+        run(args);
+    }
+
+    static int run(String[] args) {
+        // check for action
+        if (args.length < 1) {
+            printHelp();
+            StdIOUtil.printlnP("Please specify an action.");
+            return 1;
+        }
+
+        // get action
+        String action = args[0];
+        // remove action from parameters
+        final String[] params = Arrays.copyOfRange(args, 1, args.length);
+
         try {
-            CommandLine commandLine = parser.parse(options, args);
-            if (commandLine.hasOption("help")) {
-                HelpFormatter formatter = new HelpFormatter();
-                formatter.printHelp( "com.eoi.marayarn.Cli", options );
-                System.exit(0);
+            // do action
+            switch (action) {
+                case ACTION_SUBMIT:
+                    submit(params);
+                    return 0;
+                case ACTION_STATUS:
+                    status(params);
+                    return 0;
+                case ACTION_KILL:
+                    kill(params);
+                    return 0;
+                case ACTION_INFO:
+                    info(params);
+                    return 0;
+                case ACTION_SCALE:
+                    scale(params);
+                    return 0;
+                case "-h":
+                case "--help":
+                    return 0;
+                case "-v":
+                case "--version":
+                    return 0;
+                default:
+                    printHelp();
+                    StdIOUtil.printlnFS("\"%s\" is not a valid action.%n", action);
+                    return 1;
             }
-            ClientArguments clientArguments = toClientArguments(commandLine);
-            Client client = new Client();
-            ApplicationReport report = client.launch(clientArguments);
-            logger.info("Tracking url: {}", report.getTrackingUrl());
-        } catch (ParseException ex) {
-            HelpFormatter formatter = new HelpFormatter();
-            formatter.printHelp( "com.eoi.marayarn.Cli", options );
         } catch (Exception ex) {
-            logger.error("Failed to submit application", ex);
+            printHelp();
+            logger.error(String.format("Failed to run action \"%s\"", action), ex);
+            return 1;
         }
     }
 
-    static class InvalidCommandLineException extends Exception {}
+    // --------------------------------------------------------------------------------------------
+    //  Execute Actions
+    // --------------------------------------------------------------------------------------------
+
+    /**
+     * Executions the submit action.
+     * @param args Command line arguments for the submit action.
+     * @throws Exception
+     */
+    static void submit(String[] args) throws Exception {
+        Options options = SubmitOptions.buildOptions();
+        CommandLineParser parser = new GnuParser();
+        CommandLine commandLine = parser.parse(options, args);
+        ClientArguments clientArguments = SubmitOptions.toClientArguments(commandLine);
+        try(Client client = new Client()) {
+            ApplicationReport report = client.launch(clientArguments);
+            logger.info("application id: {}", report.getApplicationId());
+            logger.info("tracking url: {}", report.getOriginalTrackingUrl());
+        }
+    }
+
+    /**
+     * Executions the status action.
+     * @param args Command line arguments for the status action.
+     * @throws Exception
+     */
+    static void status(String[] args) throws Exception {
+        Options options = StatusOptions.buildOptions();
+        CommandLineParser parser = new GnuParser();
+        CommandLine commandLine = parser.parse(options, args);
+        ClientArguments clientArguments = StatusOptions.toClientArguments(commandLine);
+        try(Client client = new Client()) {
+            ApplicationReport report = client.get(clientArguments);
+            logger.info("application master host: {}", report.getHost());
+            logger.info("application master rpc port: {}", report.getRpcPort());
+            logger.info("application id: {}", report.getApplicationId());
+            logger.info("tracking url: {}", report.getOriginalTrackingUrl());
+            logger.info("application state: {}", report.getYarnApplicationState());
+            logger.info("final status: {}", report.getFinalApplicationStatus());
+            logger.info("diagnostics: {}", report.getDiagnostics());
+            logger.info("queue: {}", report.getQueue());
+            logger.info("user: {}", report.getUser());
+            logger.info("start time: {}", report.getStartTime());
+        }
+    }
+
+    /**
+     * Executions the kill action.
+     * @param args Command line arguments for the kill action.
+     * @throws Exception
+     */
+    static void kill(String[] args) throws Exception {
+        Options options = KillOptions.buildOptions();
+        CommandLineParser parser = new GnuParser();
+        CommandLine commandLine = parser.parse(options, args);
+        ClientArguments clientArguments = KillOptions.toClientArguments(commandLine);
+        try(Client client = new Client()) {
+            client.kill(clientArguments);
+            logger.info("action kill done");
+        }
+    }
+
+    /**
+     * Executions the info action.
+     * @param args Command line arguments for the info action.
+     * @throws Exception
+     */
+    static void info(String[] args) throws Exception {
+        Options options = InfoOptions.buildOptions();
+        CommandLineParser parser = new GnuParser();
+        CommandLine commandLine = parser.parse(options, args);
+        ClientArguments clientArguments = InfoOptions.toClientArguments(commandLine);
+        String trackingUrl;
+        try(Client client = new Client()) {
+            ApplicationReport report = client.get(clientArguments);
+            trackingUrl = report.getOriginalTrackingUrl();
+        }
+        try(AMClient client = new AMClient()) {
+            ApplicationInfo info = client.getApplication(trackingUrl);
+            String infoPrint = JsonUtil.print(info);
+            logger.info("info: \n{}", infoPrint);
+        }
+    }
+
+    /**
+     * Executions the scale action.
+     * @param args Command line arguments for the scale action.
+     * @throws Exception
+     */
+    static void scale(String[] args) throws Exception {
+        Options options = ScaleOptions.buildOptions();
+        CommandLineParser parser = new GnuParser();
+        CommandLine commandLine = parser.parse(options, args);
+        ClientArguments clientArguments = ScaleOptions.toClientArguments(commandLine);
+        String trackingUrl;
+        try(Client client = new Client()) {
+            ApplicationReport report = client.get(clientArguments);
+            trackingUrl = report.getOriginalTrackingUrl();
+        }
+        ScaleRequest request = ScaleOptions.toClientRequest(commandLine);
+        try(AMClient client = new AMClient()) {
+            AMResponse response = client.scaleApplication(trackingUrl, request);
+            String ack = JsonUtil.print(response);
+            logger.info("ack: \n{}", ack);
+            logger.info("action scale done");
+        }
+    }
+
+    /**
+     * Print the help of Command Line Arguments
+     */
+    static void printHelp() {
+        StdIOUtil.printlnS("./marayarn <ACTION> [OPTIONS] [ARGUMENTS]");
+        StdIOUtil.printlnS("The following actions are available:");
+        SubmitOptions.printHelp();
+        StatusOptions.printHelp();
+        KillOptions.printHelp();
+        InfoOptions.printHelp();
+        ScaleOptions.printHelp();
+    }
 }

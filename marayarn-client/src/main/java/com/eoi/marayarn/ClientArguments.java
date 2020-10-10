@@ -10,6 +10,11 @@ import java.util.Map;
  */
 public class ClientArguments {
     /**
+     * (Required) yarn ApplicationId
+     * 更新Application需要指定ApplicationId
+     */
+    private String applicationId;
+    /**
      * (Required) Marayarn ApplicationMaster的jar包所在路径URI
      * 支持file://, hdfs://, http://, ftp://表示的URI
      * Client会将文件传输到当前hdfs环境，如果目标URI跟当前hdfs是同一个环境，则会跳过上传步骤；
@@ -111,6 +116,14 @@ public class ClientArguments {
      */
     private String constraints;
 
+    public String getApplicationId() {
+        return applicationId;
+    }
+
+    public void setApplicationId(String applicationId) {
+        this.applicationId = applicationId;
+    }
+
     public String getApplicationMasterJar() {
         return applicationMasterJar;
     }
@@ -127,9 +140,8 @@ public class ClientArguments {
         return hadoopConfDir;
     }
 
-    public ClientArguments setHadoopConfDir(String hadoopConfDir) {
+    public void setHadoopConfDir(String hadoopConfDir) {
         this.hadoopConfDir = hadoopConfDir;
-        return this;
     }
 
     public String getApplicationName() {
@@ -243,7 +255,7 @@ public class ClientArguments {
         }
     }
 
-    public void check() throws InvalidClientArgumentException {
+    public void checkSubmit() throws InvalidClientArgumentException {
         if (this.applicationMasterClass == null || this.applicationMasterClass.isEmpty()) {
             this.applicationMasterClass = "com.eoi.marayarn.MaraApplicationMaster";
         }
@@ -268,5 +280,9 @@ public class ClientArguments {
         if (this.artifacts == null) {
             this.artifacts = new ArrayList<>();
         }
+    }
+
+    public void checkApp() throws InvalidClientArgumentException {
+        checkIfNullOrEmpty(this.applicationId, "applicationId");
     }
 }
