@@ -9,10 +9,16 @@
 # 文件管理
 ## 上传(目标位置不能存在同名文件)
 ### PUT     /api/artifact/upload
-* type - `local`，`URI`，`HDFS`,`http`
-* file -  type为`local`时传递
-* source - type为`URI`或`HDFS`时 传递
-* directory - 存放目录 
+* file -  上传文件
+* destDir - 目标目录
+* fileName - 文件名（不传则以原始名称为准） 
+
+## 通过URL上传
+### PUT     /api/artifact/transfer
+* url   - 源文件地址，支持http、ftp
+* destDir - 目标目录
+* fileName - 文件名（不传则以原始名称为准） 
+
 
 ## 删除
 ### DELETE      /api/artifact/{id}
