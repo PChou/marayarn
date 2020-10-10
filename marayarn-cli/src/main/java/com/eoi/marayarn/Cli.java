@@ -25,8 +25,7 @@ public class Cli {
         // check for action
         if (args.length < 1) {
             printHelp();
-            System.out.println();
-            System.out.println("Please specify an action.");
+            StdIOUtil.printlnP("Please specify an action.");
             return 1;
         }
 
@@ -61,8 +60,7 @@ public class Cli {
                     return 0;
                 default:
                     printHelp();
-                    System.out.println();
-                    System.out.printf("\"%s\" is not a valid action.\n", action);
+                    StdIOUtil.printlnFS("\"%s\" is not a valid action.%n", action);
                     return 1;
             }
         } catch (Exception ex) {
@@ -84,9 +82,9 @@ public class Cli {
     static void submit(String[] args) throws Exception {
         Options options = SubmitOptions.buildOptions();
         CommandLineParser parser = new GnuParser();
+        CommandLine commandLine = parser.parse(options, args);
+        ClientArguments clientArguments = SubmitOptions.toClientArguments(commandLine);
         try(Client client = new Client()) {
-            CommandLine commandLine = parser.parse(options, args);
-            ClientArguments clientArguments = SubmitOptions.toClientArguments(commandLine);
             ApplicationReport report = client.launch(clientArguments);
             logger.info("application id: {}", report.getApplicationId());
             logger.info("tracking url: {}", report.getOriginalTrackingUrl());
@@ -101,9 +99,9 @@ public class Cli {
     static void status(String[] args) throws Exception {
         Options options = StatusOptions.buildOptions();
         CommandLineParser parser = new GnuParser();
+        CommandLine commandLine = parser.parse(options, args);
+        ClientArguments clientArguments = StatusOptions.toClientArguments(commandLine);
         try(Client client = new Client()) {
-            CommandLine commandLine = parser.parse(options, args);
-            ClientArguments clientArguments = StatusOptions.toClientArguments(commandLine);
             ApplicationReport report = client.get(clientArguments);
             logger.info("application master host: {}", report.getHost());
             logger.info("application master rpc port: {}", report.getRpcPort());
@@ -143,10 +141,16 @@ public class Cli {
         Options options = InfoOptions.buildOptions();
         CommandLineParser parser = new GnuParser();
         CommandLine commandLine = parser.parse(options, args);
-        String url = InfoOptions.getUrl(commandLine);
+        ClientArguments clientArguments = InfoOptions.toClientArguments(commandLine);
+        String trackingUrl;
+        try(Client client = new Client()) {
+            ApplicationReport report = client.get(clientArguments);
+            trackingUrl = report.getOriginalTrackingUrl();
+        }
         try(AMClient client = new AMClient()) {
-            ApplicationInfo info = client.getApplication(url);
-            logger.info("info: \n{}", JsonUtil.print(info));
+            ApplicationInfo info = client.getApplication(trackingUrl);
+            String infoPrint = JsonUtil.print(info);
+            logger.info("info: \n{}", infoPrint);
         }
     }
 
@@ -159,11 +163,17 @@ public class Cli {
         Options options = ScaleOptions.buildOptions();
         CommandLineParser parser = new GnuParser();
         CommandLine commandLine = parser.parse(options, args);
-        String url = ScaleOptions.getUrl(commandLine);
+        ClientArguments clientArguments = ScaleOptions.toClientArguments(commandLine);
+        String trackingUrl;
+        try(Client client = new Client()) {
+            ApplicationReport report = client.get(clientArguments);
+            trackingUrl = report.getOriginalTrackingUrl();
+        }
         ScaleRequest request = ScaleOptions.toClientRequest(commandLine);
         try(AMClient client = new AMClient()) {
-            AMResponse response = client.scaleApplication(url, request);
-            logger.info("ack: \n{}", JsonUtil.print(response));
+            AMResponse response = client.scaleApplication(trackingUrl, request);
+            String ack = JsonUtil.print(response);
+            logger.info("ack: \n{}", ack);
             logger.info("action scale done");
         }
     }
@@ -172,18 +182,12 @@ public class Cli {
      * Print the help of Command Line Arguments
      */
     static void printHelp() {
-        System.out.println("./marayarn <ACTION> [OPTIONS] [ARGUMENTS]");
-        System.out.println();
-        System.out.println("The following actions are available:");
-        System.out.println();
+        StdIOUtil.printlnS("./marayarn <ACTION> [OPTIONS] [ARGUMENTS]");
+        StdIOUtil.printlnS("The following actions are available:");
         SubmitOptions.printHelp();
-        System.out.println();
         StatusOptions.printHelp();
-        System.out.println();
         KillOptions.printHelp();
-        System.out.println();
         InfoOptions.printHelp();
-        System.out.println();
         ScaleOptions.printHelp();
     }
 }

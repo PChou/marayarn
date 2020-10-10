@@ -110,9 +110,10 @@ public class SubmitOptions extends CliOptions {
     }
 
     static void printHelp() {
-        System.out.printf("Action \"%s\" submit a application\n", Cli.ACTION_SUBMIT);
+        StdIOUtil.printlnF("Action \"%s\" submit a application%n", Cli.ACTION_SUBMIT);
         HelpFormatter formatter = new HelpFormatter();
         String syntax = String.format("%s [OPTIONS]", Cli.ACTION_SUBMIT);
         formatter.printHelp(syntax, buildOptions());
+        StdIOUtil.println();
     }
 }

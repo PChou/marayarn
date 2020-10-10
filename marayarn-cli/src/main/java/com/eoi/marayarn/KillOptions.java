@@ -29,9 +29,10 @@ public class KillOptions extends CliOptions {
     }
 
     static void printHelp() {
-        System.out.printf("Action \"%s\" kill a application \n", Cli.ACTION_KILL);
+        StdIOUtil.printlnF("Action \"%s\" kill a application %n", Cli.ACTION_KILL);
         HelpFormatter formatter = new HelpFormatter();
         String syntax = String.format("%s [OPTIONS]", Cli.ACTION_KILL);
         formatter.printHelp(syntax, buildOptions());
+        StdIOUtil.println();
     }
 }

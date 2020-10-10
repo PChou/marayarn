@@ -39,21 +39,21 @@ public class AMClient implements Closeable {
         return JsonUtil.decode(responseBody, ApplicationInfo.class);
     }
 
+    public AMResponse updateApplication(String trackingUrl, UpdateRequest request) throws IOException {
+        String url = Utils.urlJoin(trackingUrl, "/api/app");
+        String requestBody = JsonUtil.encode(request);
+        String responseBody = post(url, requestBody);
+        return JsonUtil.decode(responseBody, AMResponse.class);
+    }
+
     public AMResponse stopApplication(String trackingUrl) throws IOException {
-        String url = Utils.urlJoin(trackingUrl, "/api/stop");
+        String url = Utils.urlJoin(trackingUrl, "/api/app/stop");
         String responseBody = post(url, null);
         return JsonUtil.decode(responseBody, AMResponse.class);
     }
 
     public AMResponse scaleApplication(String trackingUrl, ScaleRequest request) throws IOException {
         String url = Utils.urlJoin(trackingUrl, "/api/app/scale");
-        String requestBody = JsonUtil.encode(request);
-        String responseBody = post(url, requestBody);
-        return JsonUtil.decode(responseBody, AMResponse.class);
-    }
-
-    public AMResponse updateApplication(String trackingUrl, UpdateRequest request) throws IOException {
-        String url = Utils.urlJoin(trackingUrl, "/api/app/app");
         String requestBody = JsonUtil.encode(request);
         String responseBody = post(url, requestBody);
         return JsonUtil.decode(responseBody, AMResponse.class);

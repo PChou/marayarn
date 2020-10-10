@@ -3,11 +3,11 @@
 Marayarn provides a Command-Line Interface (CLI) to manage applications on yarn. 
 
 The command line can be used to:
-- submit a application,
-- kill a application,
+- submit application,
+- kill application,
 - get status of application,
 - provide information about application,
-- scale a application
+- scale application
 
 ## Example
 

@@ -29,9 +29,10 @@ public class StatusOptions extends CliOptions {
     }
 
     static void printHelp() {
-        System.out.printf("Action \"%s\" get status of application \n", Cli.ACTION_STATUS);
+        StdIOUtil.printlnF("Action \"%s\" get status of application%n", Cli.ACTION_STATUS);
         HelpFormatter formatter = new HelpFormatter();
         String syntax = String.format("%s [OPTIONS]", Cli.ACTION_STATUS);
         formatter.printHelp(syntax, buildOptions());
+        StdIOUtil.println();
     }
 }
