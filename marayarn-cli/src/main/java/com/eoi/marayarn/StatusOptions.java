@@ -9,26 +9,27 @@ public class StatusOptions extends CliOptions {
 
     static Options buildOptions() {
         Options options = new Options();
-        Option help = new com.eoi.marayarn.OptionBuilder("help").hasArg(false)
-                .desc("Print help").build();
-        Option id = new com.eoi.marayarn.OptionBuilder("id").hasArg(true).argName("id").required()
-                .desc("Set id of the Application").build();
-        options.addOption(help);
-        options.addOption(id);
+        Option app = new OptionBuilder("app").hasArg(true).argName("app").required()
+                .desc("Set application id of the Application").build();
+        options.addOption(app);
         return options;
     }
 
+    static void checkArguments(CommandLine commandLine) throws InvalidCliArgumentException {
+        checkRequiredOption(commandLine, "app");
+    }
+
     static ClientArguments toClientArguments(CommandLine commandLine) throws InvalidCliArgumentException {
-        checkRequiredOption(commandLine, "id");
+        checkArguments(commandLine);
 
         ClientArguments clientArguments = new ClientArguments();
-        String id = commandLine.getOptionValue("id");
+        String id = commandLine.getOptionValue("app");
         clientArguments.setApplicationId(id);
         return clientArguments;
     }
 
     static void printHelp() {
-        System.out.printf("Action \"%s\" get info of application \n", Cli.ACTION_STATUS);
+        System.out.printf("Action \"%s\" get status of application \n", Cli.ACTION_STATUS);
         HelpFormatter formatter = new HelpFormatter();
         String syntax = String.format("%s [OPTIONS]", Cli.ACTION_STATUS);
         formatter.printHelp(syntax, buildOptions());

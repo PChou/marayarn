@@ -7,7 +7,6 @@ The command line can be used to:
 - kill a application,
 - get status of application,
 - provide information about application,
-- stop a application,
 - scale a application
 
 ## Example
@@ -29,9 +28,9 @@ bin/marayarn kill -app <appID>
 bin/marayarn status -app <appID>
 ```
 
-#### stop application
+#### info application
 ```
-bin/marayarn stop -app <appID>
+bin/marayarn info -app <appID>
 ```
 
 #### scale application
@@ -49,5 +48,5 @@ The following actions are available:
 - submit
 - kill
 - status
-- stop
+- info
 - scale

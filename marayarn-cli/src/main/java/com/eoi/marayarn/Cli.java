@@ -14,6 +14,8 @@ public class Cli {
     static final String ACTION_SUBMIT = "submit";
     static final String ACTION_STATUS = "status";
     static final String ACTION_KILL = "kill";
+    static final String ACTION_INFO = "info";
+    static final String ACTION_SCALE = "scale";
 
     public static void main(String[] args) {
         run(args);
@@ -33,89 +35,142 @@ public class Cli {
         // remove action from parameters
         final String[] params = Arrays.copyOfRange(args, 1, args.length);
 
-        switch (action) {
-            case ACTION_SUBMIT:
-                submit(params);
-                return 0;
-            case ACTION_STATUS:
-                status(params);
-                return 0;
-            case ACTION_KILL:
-                kill(params);
-                return 0;
-            case "-h":
-            case "--help":
-                return 0;
-            case "-v":
-            case "--version":
-                return 0;
-            default:
-                printHelp();
-                System.out.println();
-                System.out.printf("\"%s\" is not a valid action.\n", action);
-                return 1;
+        try {
+            // do action
+            switch (action) {
+                case ACTION_SUBMIT:
+                    submit(params);
+                    return 0;
+                case ACTION_STATUS:
+                    status(params);
+                    return 0;
+                case ACTION_KILL:
+                    kill(params);
+                    return 0;
+                case ACTION_INFO:
+                    info(params);
+                    return 0;
+                case ACTION_SCALE:
+                    scale(params);
+                    return 0;
+                case "-h":
+                case "--help":
+                    return 0;
+                case "-v":
+                case "--version":
+                    return 0;
+                default:
+                    printHelp();
+                    System.out.println();
+                    System.out.printf("\"%s\" is not a valid action.\n", action);
+                    return 1;
+            }
+        } catch (Exception ex) {
+            printHelp();
+            logger.error(String.format("Failed to run action \"%s\"", action), ex);
+            return 1;
         }
-
     }
 
-    static void submit(String[] args) {
+    // --------------------------------------------------------------------------------------------
+    //  Execute Actions
+    // --------------------------------------------------------------------------------------------
+
+    /**
+     * Executions the submit action.
+     * @param args Command line arguments for the submit action.
+     * @throws Exception
+     */
+    static void submit(String[] args) throws Exception {
         Options options = SubmitOptions.buildOptions();
         CommandLineParser parser = new GnuParser();
         try(Client client = new Client()) {
             CommandLine commandLine = parser.parse(options, args);
-            if (commandLine.hasOption("help")) {
-                SubmitOptions.printHelp();
-                System.exit(0);
-            }
             ClientArguments clientArguments = SubmitOptions.toClientArguments(commandLine);
             ApplicationReport report = client.launch(clientArguments);
             logger.info("application id: {}", report.getApplicationId());
-            logger.info("Tracking url: {}", report.getTrackingUrl());
-        } catch (Exception ex) {
-            SubmitOptions.printHelp();
-            logger.error(String.format("Failed to run action \"%s\"", ACTION_SUBMIT), ex);
+            logger.info("tracking url: {}", report.getOriginalTrackingUrl());
         }
     }
 
-    static void status(String[] args) {
+    /**
+     * Executions the status action.
+     * @param args Command line arguments for the status action.
+     * @throws Exception
+     */
+    static void status(String[] args) throws Exception {
         Options options = StatusOptions.buildOptions();
         CommandLineParser parser = new GnuParser();
         try(Client client = new Client()) {
             CommandLine commandLine = parser.parse(options, args);
-            if (commandLine.hasOption("help")) {
-                StatusOptions.printHelp();
-                System.exit(0);
-            }
             ClientArguments clientArguments = StatusOptions.toClientArguments(commandLine);
             ApplicationReport report = client.get(clientArguments);
+            logger.info("application master host: {}", report.getHost());
+            logger.info("application master rpc port: {}", report.getRpcPort());
             logger.info("application id: {}", report.getApplicationId());
-            logger.info("Tracking url: {}", report.getTrackingUrl());
+            logger.info("tracking url: {}", report.getOriginalTrackingUrl());
             logger.info("application state: {}", report.getYarnApplicationState());
-            logger.info("final state: {}", report.getFinalApplicationStatus());
-        } catch (Exception ex) {
-            StatusOptions.printHelp();
-            logger.error(String.format("Failed to run action \"%s\"", ACTION_STATUS), ex);
+            logger.info("final status: {}", report.getFinalApplicationStatus());
+            logger.info("diagnostics: {}", report.getDiagnostics());
+            logger.info("queue: {}", report.getQueue());
+            logger.info("user: {}", report.getUser());
+            logger.info("start time: {}", report.getStartTime());
         }
     }
 
-    static void kill(String[] args) {
+    /**
+     * Executions the kill action.
+     * @param args Command line arguments for the kill action.
+     * @throws Exception
+     */
+    static void kill(String[] args) throws Exception {
         Options options = KillOptions.buildOptions();
         CommandLineParser parser = new GnuParser();
+        CommandLine commandLine = parser.parse(options, args);
+        ClientArguments clientArguments = KillOptions.toClientArguments(commandLine);
         try(Client client = new Client()) {
-            CommandLine commandLine = parser.parse(options, args);
-            if (commandLine.hasOption("help")) {
-                KillOptions.printHelp();
-                System.exit(0);
-            }
-            ClientArguments clientArguments = KillOptions.toClientArguments(commandLine);
             client.kill(clientArguments);
-            logger.info("killed application {}", clientArguments.getApplicationId());
-        } catch (Exception ex) {
-            KillOptions.printHelp();
-            logger.error(String.format("Failed to run action \"%s\"", ACTION_KILL), ex);
+            logger.info("action kill done");
         }
     }
 
+    /**
+     * Executions the info action.
+     * @param args Command line arguments for the info action.
+     * @throws Exception
+     */
+    static void info(String[] args) throws Exception {
+        Options options = InfoOptions.buildOptions();
+        CommandLineParser parser = new GnuParser();
+        CommandLine commandLine = parser.parse(options, args);
+        String url = InfoOptions.getUrl(commandLine);
+        try(AMClient client = new AMClient()) {
+            ApplicationInfo info = client.getApplication(url);
+            logger.info("info: \n{}", JsonUtil.print(info));
+        }
+    }
+
+    /**
+     * Executions the scale action.
+     * @param args Command line arguments for the scale action.
+     * @throws Exception
+     */
+    static void scale(String[] args) throws Exception {
+        Options options = ScaleOptions.buildOptions();
+        CommandLineParser parser = new GnuParser();
+        CommandLine commandLine = parser.parse(options, args);
+        String url = ScaleOptions.getUrl(commandLine);
+        ScaleRequest request = ScaleOptions.toClientRequest(commandLine);
+        try(AMClient client = new AMClient()) {
+            AMResponse response = client.scaleApplication(url, request);
+            logger.info("ack: \n{}", JsonUtil.print(response));
+            logger.info("action scale done");
+        }
+    }
+
+    /**
+     * Print the help of Command Line Arguments
+     */
     static void printHelp() {
         System.out.println("./marayarn <ACTION> [OPTIONS] [ARGUMENTS]");
         System.out.println();
@@ -123,8 +178,12 @@ public class Cli {
         System.out.println();
         SubmitOptions.printHelp();
         System.out.println();
+        StatusOptions.printHelp();
+        System.out.println();
         KillOptions.printHelp();
         System.out.println();
-        StatusOptions.printHelp();
+        InfoOptions.printHelp();
+        System.out.println();
+        ScaleOptions.printHelp();
     }
 }

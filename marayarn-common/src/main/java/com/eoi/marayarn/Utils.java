@@ -18,4 +18,17 @@ public class Utils {
             return true;
         return false;
     }
+
+    public static String urlJoin(String first, String... more) {
+        for(String item : more) {
+            if(first.endsWith("/") && item.startsWith("/")) {
+                first = String.format("%s%s", first.substring(0, first.length()-1), item);
+            } else if(first.endsWith("/") || item.startsWith("/")) {
+                first = String.format("%s%s", first, item);
+            } else {
+                first = String.format("%s/%s", first, item);
+            }
+        }
+        return first;
+    }
 }

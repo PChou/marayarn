@@ -24,33 +24,30 @@ public class SubmitOptions extends CliOptions {
 
     static Options buildOptions() {
         Options options = new Options();
-        Option help = new com.eoi.marayarn.OptionBuilder("help").hasArg(false)
-                .desc("Print help").build();
-        Option name = new com.eoi.marayarn.OptionBuilder("name").hasArg(true).argName("name").required()
+        Option name = new OptionBuilder("name").hasArg(true).argName("name").required()
                 .desc("Set name of the Application").build();
-        Option queue = new com.eoi.marayarn.OptionBuilder("queue").hasArg(true).argName("name")
+        Option queue = new OptionBuilder("queue").hasArg(true).argName("name")
                 .desc("The queue name of resource which tasks run in").build();
-        Option cpu = new com.eoi.marayarn.OptionBuilder("cpu").hasArg(true).argName("int")
+        Option cpu = new OptionBuilder("cpu").hasArg(true).argName("int")
                 .desc("The vcpu core count of each task (not include am)").build();
-        Option memory = new com.eoi.marayarn.OptionBuilder("memory").hasArg(true).argName("int")
+        Option memory = new OptionBuilder("memory").hasArg(true).argName("int")
                 .desc("The memory in MB of each task (not include am)").build();
-        Option instance = new com.eoi.marayarn.OptionBuilder("instance").hasArg(true).argName("int")
+        Option instance = new OptionBuilder("instance").hasArg(true).argName("int")
                 .desc("The number of instance of the application (not include am)").build();
-        Option files = new com.eoi.marayarn.OptionBuilder("file").hasArgs().argName("file://<LocalPath>")
+        Option files = new OptionBuilder("file").hasArgs().argName("file://<LocalPath>")
                 .desc("Artifacts that need upload to hdfs, support [file|hdfs|http|https|ftp]://<user>:<password>@host:port...").build();
-        Option command = new com.eoi.marayarn.OptionBuilder("cmd").hasArg(true).argName("cmd").required()
+        Option command = new OptionBuilder("cmd").hasArg(true).argName("cmd").required()
                 .desc("The command line").build();
-        Option executorEnv = new com.eoi.marayarn.OptionBuilder("E").numberOfArgs(2).valueSeparator('=')
+        Option executorEnv = new OptionBuilder("E").numberOfArgs(2).valueSeparator('=')
                 .desc("Executor launch environment variable, ex: -Ea=b").build();
-        Option amJars = new com.eoi.marayarn.OptionBuilder("am").hasArg(true).required()
+        Option amJars = new OptionBuilder("am").hasArg(true).required()
                 .desc("ApplicationMaster jar path, support [file|hdfs|http|https|ftp]://<user>:<password>@host:port...").build();
-        Option principal = new com.eoi.marayarn.OptionBuilder("principal").hasArg(true)
+        Option principal = new OptionBuilder("principal").hasArg(true)
                 .desc("Principal to be used to login to KDC, while running secure HDFS").build();
-        Option keytab = new com.eoi.marayarn.OptionBuilder("keytab").hasArg(true)
+        Option keytab = new OptionBuilder("keytab").hasArg(true)
                 .desc("The full path to the file that contains the keytab for the principal specified above").build();
-        Option constraints = new com.eoi.marayarn.OptionBuilder("constraints").hasArg(true)
+        Option constraints = new OptionBuilder("constraints").hasArg(true)
                 .desc("The constraints string that describe the locality requirement. see document for more information").build();
-        options.addOption(help);
         options.addOption(name);
         options.addOption(queue);
         options.addOption(cpu);
@@ -66,8 +63,12 @@ public class SubmitOptions extends CliOptions {
         return options;
     }
 
-    static ClientArguments toClientArguments(CommandLine commandLine) throws InvalidCliArgumentException {
+    static void checkArguments(CommandLine commandLine) throws InvalidCliArgumentException {
         checkRequiredOption(commandLine, "cmd", "name", "am");
+    }
+
+    static ClientArguments toClientArguments(CommandLine commandLine) throws InvalidCliArgumentException {
+        checkArguments(commandLine);
 
         ClientArguments clientArguments = new ClientArguments();
         String cmd = commandLine.getOptionValue("cmd");

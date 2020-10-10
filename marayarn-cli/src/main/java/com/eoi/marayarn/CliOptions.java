@@ -22,4 +22,18 @@ public class CliOptions {
         }
     }
 
+    static void checkMustOneOption(CommandLine commandLine, String... arguments) throws InvalidCliArgumentException {
+        int count = 0;
+        for(String argument : arguments) {
+            if (!commandLine.hasOption(argument)) {
+                count++;
+            }
+        }
+        if(count < 1) {
+            String missingStr = String.format("Must provide one argument at least: [%s]",
+                    String.join(",", arguments)
+            );
+            throw new InvalidCliArgumentException(missingStr);
+        }
+    }
 }
