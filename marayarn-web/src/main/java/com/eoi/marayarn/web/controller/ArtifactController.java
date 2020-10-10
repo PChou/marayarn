@@ -1,6 +1,9 @@
 package com.eoi.marayarn.web.controller;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.eoi.marayarn.web.base.ResponseResult;
+import com.eoi.marayarn.web.entity.db.Artifact;
+import com.eoi.marayarn.web.entity.req.ArtifactQueryReq;
 import com.eoi.marayarn.web.entity.req.UploadReq;
 import com.eoi.marayarn.web.enums.MsgCode;
 import com.eoi.marayarn.web.exception.BizException;
@@ -52,5 +55,11 @@ public class ArtifactController {
             logger.error("Parse URL error", e);
             return ResponseResult.of(MsgCode.INVALID_PARAM.code, "URL解析异常");
         }
+    }
+
+    @PostMapping("/list")
+    public ResponseResult list(@RequestBody ArtifactQueryReq req) {
+        IPage<Artifact> page = artifactService.page(req);
+        return ResponseResult.success(page.getRecords(), page.getTotal());
     }
 }

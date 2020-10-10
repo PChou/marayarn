@@ -24,11 +24,17 @@
 ### DELETE      /api/artifact/{id}
 
 ## 查询
-### GET    /api/artifact/list
+### POST    /api/artifact/list
 * page 
 * size
 * filter
+  - name 名称（模糊）
+  - directory 目录（右模糊）
+  - timeFrom 
+  - timeTo
 * sort
+  - name
+  - createTime 等同于ID排序
 
 
 

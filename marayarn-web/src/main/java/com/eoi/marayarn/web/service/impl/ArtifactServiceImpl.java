@@ -1,6 +1,8 @@
 package com.eoi.marayarn.web.service.impl;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.eoi.marayarn.web.entity.db.Artifact;
+import com.eoi.marayarn.web.entity.req.ArtifactQueryReq;
 import com.eoi.marayarn.web.enums.MsgCode;
 import com.eoi.marayarn.web.exception.BizException;
 import com.eoi.marayarn.web.mapper.ArtifactMapper;
@@ -102,5 +104,10 @@ public class ArtifactServiceImpl implements ArtifactService {
             logger.error("Get HDFS error!", e);
             throw new BizException(MsgCode.SYSTEM_ERROR, e);
         }
+    }
+
+    @Override
+    public IPage<Artifact> page(ArtifactQueryReq req) {
+        return artifactMapper.selectPage(req.page(),req.query());
     }
 }

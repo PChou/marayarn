@@ -18,6 +18,7 @@ public class GroupInfoResp {
     @Getter
     @Setter
     @NoArgsConstructor
+    @AllArgsConstructor
     @Builder
     public static class Item {
         private Long id;
