@@ -30,6 +30,9 @@ spring:
       testOnBorrow: false
       # 归还连接时执行validationQuery检测
       testOnReturn: false
+hdfs:
+  conf:
+    dir: /Users/eoi/IdeaProjects/marayarn/hadoop
 
 
 mybatis-plus:

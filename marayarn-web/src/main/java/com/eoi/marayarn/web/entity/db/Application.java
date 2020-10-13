@@ -22,6 +22,9 @@ public class Application {
     private Long groupId;
 
     @TableField
+    private String absolutePath; //当前目录的绝对路径，必须以'/'结尾
+
+    @TableField
     private String name;
 
     @TableField
