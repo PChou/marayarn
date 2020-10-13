@@ -102,13 +102,22 @@ public class Client implements Closeable {
                 logger.warn("Failed to login user from keytab: {}({})", arguments.getPrincipal(), arguments.getKeytab());
             }
             if (ugi != null) {
-                logger.info("do action via user {}", ugi.getUserName());
+                logger.info("Do action via user {}", ugi.getUserName());
                 return ugi.doAs((PrivilegedExceptionAction<T>) () -> action.doAction());
             } else {
                 throw new Exception(String.format("Failed to login user from keytab: %s(%s)", arguments.getPrincipal(), arguments.getKeytab()));
             }
         } else {
-            return action.doAction();
+            UserGroupInformation proxyUser = null;
+            if (arguments.getUser() != null && !arguments.getUser().isEmpty()) {
+                proxyUser = UserGroupInformation.createProxyUser(arguments.getUser(),
+                        UserGroupInformation.getCurrentUser());
+            }
+            if (proxyUser != null) {
+                return proxyUser.doAs((PrivilegedExceptionAction<T>) () -> action.doAction());
+            } else {
+                return action.doAction();
+            }
         }
     }
 

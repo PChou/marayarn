@@ -57,7 +57,7 @@ public class ClientArguments {
      */
     private int instances;
     /**
-     * TODO 设置用户
+     * proxyUser
      */
     private String user;
     /**

@@ -23,5 +23,6 @@ logs/
 dependency-reduced-pom.xml
 hadoop/
 hadoop-kerberos/
+hadoop-test/
 marayarn/marayarn
 marayarn/marayarn-cli*

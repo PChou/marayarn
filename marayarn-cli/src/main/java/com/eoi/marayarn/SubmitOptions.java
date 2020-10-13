@@ -48,6 +48,8 @@ public class SubmitOptions extends CliOptions {
                 .desc("The full path to the file that contains the keytab for the principal specified above").build();
         Option constraints = new OptionBuilder("constraints").hasArg(true)
                 .desc("The constraints string that describe the locality requirement. see document for more information").build();
+        Option proxyUser = new OptionBuilder("user").hasArg(true)
+                .desc("User to impersonate when submitting the application. This argument does not work with --principal / --keytab").build();
         options.addOption(name);
         options.addOption(queue);
         options.addOption(cpu);
@@ -60,6 +62,7 @@ public class SubmitOptions extends CliOptions {
         options.addOption(principal);
         options.addOption(keytab);
         options.addOption(constraints);
+        options.addOption(proxyUser);
         return options;
     }
 
@@ -84,6 +87,7 @@ public class SubmitOptions extends CliOptions {
         clientArguments.setPrincipal(commandLine.getOptionValue("principal", null));
         clientArguments.setKeytab(commandLine.getOptionValue("keytab", null));
         clientArguments.setConstraints(commandLine.getOptionValue("constraints", null));
+        clientArguments.setUser(commandLine.getOptionValue("user", null));
         Properties envsProps = commandLine.getOptionProperties("E");
         Map<String, String> executorEnvs = new HashMap<>();
         if (envsProps != null) {

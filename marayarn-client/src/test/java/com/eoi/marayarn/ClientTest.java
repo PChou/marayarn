@@ -48,12 +48,14 @@ public class ClientTest {
 
     @Test
     public void clientTest_simple_shell_command() throws Exception {
+        // environmentVariables.set("HADOOP_PROXY_USER", "root");
         ClientArguments arguments = new ClientArguments();
         arguments.setApplicationMasterJar("file://" + getProjectRoot() + "/marayarn-am/target/" + AM_JAR_NAME);
         arguments.setApplicationName("marayarn_test1");
-        arguments.setHadoopConfDir(getProjectRoot() + "/hadoop");
+        arguments.setHadoopConfDir(getProjectRoot() + "/hadoop-test");
         arguments.setCommand("while true; do date; sleep 5; done");
-        arguments.setInstances(4);
+        arguments.setInstances(1);
+        // arguments.setUser("test1");
         Client client = new Client();
         ApplicationReport report = client.launch(arguments);
         System.out.println(report.getTrackingUrl());

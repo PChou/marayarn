@@ -45,7 +45,7 @@ tar -zxf marayarn-cli/target/marayarn-cli-1.0-SNAPSHOT.tar.gz
 下面的例子向yarn提交一个简单的shell命令，并指定了2个实例（假设`$PWD/hadoop`包含`core-site.xml`, `hdfs-site.xml`, `yarn-site.xml`）
 
 ```sh
-HADOOP_CONF_DIR=$PWD/hadoop marayarn/marayarn \
+HADOOP_CONF_DIR=$PWD/hadoop marayarn/marayarn submit \
 -am file:///$PWD/marayarn-am/target/marayarn-am-1.0-SNAPSHOT-jar-with-dependencies.jar \
 -cpu 1 -memory 512 -name marayarn_test -instance 2 \
 -cmd 'while true; do date; sleep 5; done'
@@ -161,7 +161,7 @@ input { stdin { } } output { stdout {} }
 通过`Cli`提交应用：
 
 ```sh
-HADOOP_CONF_DIR=$PWD/hadoop marayarn/marayarn \
+HADOOP_CONF_DIR=$PWD/hadoop marayarn/marayarn submit \
 -am file:///$PWD/marayarn-am/target/marayarn-am-1.0-SNAPSHOT-jar-with-dependencies.jar \
 -cpu 1 -memory 2048 -name logstash_test -instance 2 \
 --file "http://.../logstash-7.3.0.tar.gz#dir" \
@@ -209,7 +209,7 @@ Logstash could not be started because there is already another instance using th
 当hdfs和yarn开启kerberos认证时，提交任务需要指定principal和keytab。例如，将上面例子中的shell脚本提交到开启kerberos的yarn环境，使用如下命令
 
 ```sh
-HADOOP_CONF_DIR=$PWD/hadoop-kerberos marayarn/marayarn \
+HADOOP_CONF_DIR=$PWD/hadoop-kerberos marayarn/marayarn submit \
 -am file:///$PWD/marayarn-am/target/marayarn-am-1.0-SNAPSHOT-jar-with-dependencies.jar \
 -cpu 1 -memory 512 -name marayarn_test -instance 2 \
 -cmd 'while true; do date; sleep 5; done' \
