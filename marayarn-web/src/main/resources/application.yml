@@ -30,9 +30,13 @@ spring:
       testOnBorrow: false
       # 归还连接时执行validationQuery检测
       testOnReturn: false
-hdfs:
+
+hadoop:
   conf:
     dir: /Users/eoi/IdeaProjects/marayarn/hadoop
+  yarn:
+    amJar: hdfs://eoiNameService/user/eoi/.stage/application_1600681356334_1088/marayarn-am-1.0-SNAPSHOT-jar-with-dependencies.jar
+    amClz: com.eoi.marayarn.MaraApplicationMaster
 
 
 mybatis-plus:

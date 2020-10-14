@@ -56,4 +56,7 @@ public class Application {
 
     @TableField
     private Long versionTime;
+
+    @TableField
+    private String env;
 }

@@ -1,6 +1,5 @@
 package com.eoi.marayarn.web.entity.db;
 
-import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -8,23 +7,22 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * Created by wenbo.gong on 2020/10/10
+ * Created by wenbo.gong on 2020/10/13
  */
+@TableName("tb_application_artifact")
 @Getter
 @Setter
-@TableName("tb_artifact")
-public class Artifact {
+public class ApplicationArtifact {
 
-    @TableId(type = IdType.AUTO)
-    private Long id;
+    @TableId
+    private Long applicationId;
 
-    @TableField
-    private String name;
-
-    @TableField
-    private String directory;
+    @TableId
+    private Long artifactId;
 
     @TableField
-    private Long createTime;
+    private Long versionTime;
 
+    @TableField
+    private String dir;
 }

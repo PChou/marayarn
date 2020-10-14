@@ -40,41 +40,30 @@
 
 #应用
 ## 创建
-### POST /api/application
+### POST /api/app
 * name - 名称
-* group_id - 分组目录Id
+* groupId - 分组目录Id
 * cpu - cpu 个数
 * memory - 内存
 * instanceCount - 实例个数 0 代表挂起
 * command - 命令
-* artifactIds - 引用的文件id列表
+* artifacts - 引用的文件Map， key 为artifactId，value 为解压目录可以为 null
 * env - 环境变量 map 对象
 * constraints - 约束
 * user - 认证用户
 * queue - 任务队列
 
-
-## 状态查询
-### GET /api/application/query
-* status
-
-
-
-
 ## 删除
-### DELETE /api/application/{id}
+### DELETE /api/app/destroy/{appId}
 
-## 重启
-### POST /api/application/{id}/restart
+## scale
+### POST /api/app/scale/{appId}
+* count 实例数，为0则执行挂起操作
+* killContainerIds 需要被指定杀死的容器Id列表
 
-## scale/suspend （scale 为0即为suspend操作）
-### POST /api/application/{id}/scale
-* instanceCount - 0 代表 suspend
-* killContainerIds - 指定需要被删除的容器
+## 应用信息查询
+### GET /api/app/info
 
-
-## 获取应用实例信息
-### GET /api/application/{id}/instance
 
 ## 获取应用配置信息 (即获取历史)
 ### GET /api/application/{id}/configs
