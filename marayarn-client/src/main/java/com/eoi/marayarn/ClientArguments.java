@@ -131,6 +131,9 @@ public class ClientArguments {
     public void setApplicationMasterJar(String applicationMasterJar) {
         this.applicationMasterJar = applicationMasterJar;
     }
+    public void setApplicationMasterClass(String applicationMasterClass){
+        this.applicationMasterClass  = applicationMasterClass;
+    }
 
     public String getApplicationMasterClass() {
         return applicationMasterClass;

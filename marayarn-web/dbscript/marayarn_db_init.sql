@@ -25,8 +25,7 @@ DROP TABLE IF EXISTS `tb_artifact`;
 CREATE TABLE `tb_artifact`  (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `name` varchar(100) NOT NULL,
-  `hdfs_addr` varchar(50) NULL,
-  `directory` varchar(100) NOT NULL,
+  `directory` varchar(255) NOT NULL,
   `create_time` bigint(20) NOT NULL,
   PRIMARY KEY (`id`)
 );
@@ -36,9 +35,22 @@ DROP TABLE IF EXISTS `tb_group`;
 CREATE TABLE `tb_group`  (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `name` varchar(50) NOT NULL,
-  `parentId` bigint(20) NOT NULL DEFAULT -1,
+  `parent_id` bigint(20) NOT NULL DEFAULT -1,
   `absolute_path` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
 );
+
+
+
+DROP TABLE IF EXISTS `tb_application_artifact`;
+CREATE TABLE `tb_application_artifact`  (
+  `application_id` bigint(20) NOT NULL,
+  `artifact_id` bigint(20) NOT NULL,
+  `version_time` bigint(20) NOT NULL,
+  `dir` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`application_id`,`artifact_id`)
+);
+
+
 
 

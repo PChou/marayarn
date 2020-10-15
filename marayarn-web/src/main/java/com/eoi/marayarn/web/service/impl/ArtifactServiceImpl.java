@@ -32,8 +32,8 @@ import java.net.URL;
 @Service
 public class ArtifactServiceImpl implements ArtifactService {
 
-    @Value("${hdfs.conf.dir}")
-    private String hdfsDir;
+    @Value("${hadoop.conf.dir}")
+    private String hadoopConfDir;
 
     private Logger logger = LoggerFactory.getLogger(ArtifactServiceImpl.class);
 
@@ -48,7 +48,7 @@ public class ArtifactServiceImpl implements ArtifactService {
                 throw new BizException(MsgCode.INVALID_PARAM);
             }
             try {
-                upload(file.getInputStream(), destDir, fileName);
+                upload(file.getInputStream(), destDir, destName);
             } catch (IOException e) {
                 logger.error("Upload artifact error", e);
                 throw new BizException(MsgCode.SYSTEM_ERROR, e);
@@ -72,16 +72,20 @@ public class ArtifactServiceImpl implements ArtifactService {
 
     private void upload(InputStream in, String destDir, String fileName) throws BizException {
         try (FileSystem fs = getHDFS()) {
-            Path parentDir = StringUtils.isEmpty(destDir) ? fs.getHomeDirectory() : new Path(destDir);
-            OutputStream os = fs.create(new Path(parentDir, fileName));
+            Path dir;
+            if (StringUtils.isEmpty(destDir)) {
+                dir = fs.getHomeDirectory();
+            } else {
+                Path dest = new Path(destDir);
+                dir = dest.isAbsolute() ? dest : new Path(fs.getHomeDirectory(), dest);
+            }
+            OutputStream os = fs.create(new Path(dir, fileName));
             IOUtils.copyBytes(in, os, 4096, true);
-
             //保存记录
             Artifact artifact = new Artifact();
             artifact.setName(fileName);
-            artifact.setDirectory(parentDir.toString());
+            artifact.setDirectory(dir.toString());
             artifact.setCreateTime(System.currentTimeMillis());
-            artifact.setHdfsAddr(fs.getUri().toString());
             artifactMapper.insert(artifact);
         } catch (IOException e) {
             logger.error("Upload file to HDFS error!", e);
@@ -93,7 +97,7 @@ public class ArtifactServiceImpl implements ArtifactService {
     private FileSystem getHDFS() throws BizException {
         try {
             Configuration conf = new Configuration();
-            File[] files = FileUtil.listFiles(new File(hdfsDir));
+            File[] files = FileUtil.listFiles(new File(hadoopConfDir));
             for (File f : files) {
                 if (f.isFile() && f.canRead() && f.getName().endsWith(".xml")) {
                     conf.addResource(new Path(f.getAbsolutePath()));
@@ -108,6 +112,6 @@ public class ArtifactServiceImpl implements ArtifactService {
 
     @Override
     public IPage<Artifact> page(ArtifactQueryReq req) {
-        return artifactMapper.selectPage(req.page(),req.query());
+        return artifactMapper.selectPage(req.page(), req.query());
     }
 }

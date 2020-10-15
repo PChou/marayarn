@@ -6,6 +6,7 @@ package com.eoi.marayarn.web.enums;
 public enum ApplicationStatus {
 
     READY("Ready", "就绪"),
+    FAILED("FAILED", "失败"),
     SUSPEND("Suspend", "挂起"),
 
     RUNNING("Running", "运行中"),
