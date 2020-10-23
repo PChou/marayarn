@@ -58,9 +58,9 @@ public class ApplicationHandler extends ApiHandler {
                 return JsonUtil._mapper.writeValueAsBytes(AckResponse.OK);
             }
         } catch (Exception ex) {
-            throw new HandlerErrorException(HttpResponseStatus.INTERNAL_SERVER_ERROR, ex.toString());
+            throw new HandlerErrorException(HttpResponseStatus.INTERNAL_SERVER_ERROR, ex);
         }
-        throw new HandlerErrorException(HttpResponseStatus.NOT_FOUND, "no match handler function");
+        throw new HandlerErrorException(HttpResponseStatus.NOT_FOUND, new Exception("no match handler function"));
     }
 
     private ApplicationInfo getApplicationIfo() {

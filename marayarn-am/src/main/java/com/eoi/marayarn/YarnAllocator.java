@@ -35,6 +35,7 @@ public class YarnAllocator {
     private NMClient nmClient;
     private ApplicationAttemptId applicationAttemptId;
     private ApplicationMasterArguments arguments;
+    private List<ApplicationMasterPlugin> applicationPlugins;
     private ThreadPoolExecutor launcherPool;
     private Resource containerResource;
     private Map<ContainerId, ContainerAndState> allocatedContainers;
@@ -59,11 +60,13 @@ public class YarnAllocator {
             Configuration configuration,
             AMRMClient<AMRMClient.ContainerRequest> amClient,
             ApplicationAttemptId applicationAttemptId,
-            ApplicationMasterArguments arguments) {
+            ApplicationMasterArguments arguments,
+            List<ApplicationMasterPlugin> applicationPlugins) {
         this.conf = configuration;
         this.amrmClient = amClient;
         this.applicationAttemptId = applicationAttemptId;
         this.arguments = arguments;
+        this.applicationPlugins = applicationPlugins;
         this.launcherPool = new ThreadPoolExecutor(
                 // max pool size of Integer.MAX_VALUE is ignored because we use an unbounded queue
                 25, Integer.MAX_VALUE,
@@ -357,7 +360,9 @@ public class YarnAllocator {
                     Container container = containerState.container;
                     if (containerState.state == 1) continue;
                     // start the container and set state flag to 1
-                    ExecutorRunnable executorRunnable = new ExecutorRunnable(this.conf, container, this.arguments.commandLine, this.nmClient);
+                    ExecutorRunnable executorRunnable =
+                            new ExecutorRunnable(this.conf, container, this.arguments.commandLine, this.nmClient,
+                                    applicationPlugins.stream().map(ApplicationMasterPlugin::getExecutorHook).collect(Collectors.toList()));
                     launcherPool.execute(executorRunnable);
                     logger.info("Launching container {} on host {}", c.getKey(), container.getNodeId().getHost());
                     containerState.state = 1;

@@ -32,7 +32,7 @@ public class Client implements Closeable {
 
     public static final Logger logger = LoggerFactory.getLogger(Client.class);
     // Memory needed to launch the ApplicationMaster
-    private static final int AM_MIN_MEMEORY = 256;
+    private static final int AM_MIN_MEMEORY = 1024;
     // Core needed to launch the ApplicationMaster
     private static final int AM_MIN_CORE = 1;
     private static final FsPermission STAGING_DIR_PERMISSION =

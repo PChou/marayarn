@@ -38,8 +38,10 @@ public class SubmitOptions extends CliOptions {
                 .desc("Artifacts that need upload to hdfs, support [file|hdfs|http|https|ftp]://<user>:<password>@host:port...").build();
         Option command = new OptionBuilder("cmd").hasArg(true).argName("cmd").required()
                 .desc("The command line").build();
+        Option amEnv = new OptionBuilder("e").numberOfArgs(2).valueSeparator('=')
+                .desc("ApplicationMaster launch environment variable, ex: -e 'a=b'").build();
         Option executorEnv = new OptionBuilder("E").numberOfArgs(2).valueSeparator('=')
-                .desc("Executor launch environment variable, ex: -Ea=b").build();
+                .desc("Executor launch environment variable, ex: -E 'a=b'").build();
         Option amJars = new OptionBuilder("am").hasArg(true).required()
                 .desc("ApplicationMaster jar path, support [file|hdfs|http|https|ftp]://<user>:<password>@host:port...").build();
         Option principal = new OptionBuilder("principal").hasArg(true)
@@ -57,6 +59,7 @@ public class SubmitOptions extends CliOptions {
         options.addOption(instance);
         options.addOption(files);
         options.addOption(command);
+        options.addOption(amEnv);
         options.addOption(executorEnv);
         options.addOption(amJars);
         options.addOption(principal);
@@ -88,6 +91,7 @@ public class SubmitOptions extends CliOptions {
         clientArguments.setKeytab(commandLine.getOptionValue("keytab", null));
         clientArguments.setConstraints(commandLine.getOptionValue("constraints", null));
         clientArguments.setUser(commandLine.getOptionValue("user", null));
+        // env for executor
         Properties envsProps = commandLine.getOptionProperties("E");
         Map<String, String> executorEnvs = new HashMap<>();
         if (envsProps != null) {
@@ -96,6 +100,17 @@ public class SubmitOptions extends CliOptions {
             }
         }
         clientArguments.setExecutorEnvironments(executorEnvs);
+
+        // env for application master
+        Properties amEnvsProps = commandLine.getOptionProperties("e");
+        Map<String, String> amEnvs = new HashMap<>();
+        if (amEnvsProps != null) {
+            for (Map.Entry<Object, Object> item: amEnvsProps.entrySet()) {
+                amEnvs.put(item.getKey().toString(), item.getValue().toString());
+            }
+        }
+        clientArguments.setaMEnvironments(amEnvs);
+
         String[] files = commandLine.getOptionValues("file");
         if (files != null) {
             List<Artifact> artifacts = new ArrayList<>();

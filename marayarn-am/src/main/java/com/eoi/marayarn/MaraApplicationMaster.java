@@ -1,5 +1,7 @@
 package com.eoi.marayarn;
 
+import com.eoi.marayarn.http.Handler;
+import com.eoi.marayarn.http.HandlerFactory;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -27,6 +29,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ServiceLoader;
 
 import static com.eoi.marayarn.Constants.AM_ENV_COMMANDLINE;
 
@@ -45,6 +51,8 @@ public class MaraApplicationMaster {
     public YarnAllocator allocator;
     private volatile boolean finished;
 
+    private List<ApplicationMasterPlugin> applicationPlugins = new ArrayList<>();
+
     public void terminate() throws Exception {
         this.finished = true;
         unregister(FinalApplicationStatus.KILLED);
@@ -58,12 +66,25 @@ public class MaraApplicationMaster {
         if ( channel == null )
             return;
         EventExecutorGroup eventHandlerGroup = new DefaultEventExecutorGroup(5);
+        List<Handler> pluginHandlers = new ArrayList<>();
+        for (ApplicationMasterPlugin plugin: applicationPlugins) {
+            HandlerFactory handlerFactory = plugin.handlerFactory();
+            if (handlerFactory == null || handlerFactory.getHandlers() == null) {
+                continue;
+            }
+            for (Handler handler: handlerFactory.getHandlers()) {
+                if (handler == null) {
+                    continue;
+                }
+                pluginHandlers.add(handler);
+            }
+        }
         channel.pipeline()
                 .addLast("http-decoder", new HttpRequestDecoder()) // 请求消息解码器
                 .addLast("http-aggregator", new HttpObjectAggregator(512*1024)) // 目的是将多个消息转换为单一的request或者response对象
                 .addLast("http-encoder", new HttpResponseEncoder())//响应解码器
                 .addLast("http-chunked",new ChunkedWriteHandler())//目的是支持异步大文件传输
-                .addLast(eventHandlerGroup, new HttpRequestHandler(this));
+                .addLast(eventHandlerGroup, new HttpRequestHandler(this, pluginHandlers));
     }
 
     public void startHttpServer() throws Exception {
@@ -125,10 +146,10 @@ public class MaraApplicationMaster {
         this.amClient = AMRMClient.createAMRMClient();
         this.amClient.init(this.configuration);
         this.amClient.start();
-        this.allocator = new YarnAllocator(this.configuration, this.amClient, this.applicationAttemptId, arguments);
+        this.allocator = new YarnAllocator(this.configuration, this.amClient, this.applicationAttemptId, arguments, applicationPlugins);
     }
 
-    public void register() throws YarnException, IOException {
+    public AMEndPoint getEndPoint() throws IOException {
         assert(channel != null);
         String hn = InetAddress.getLocalHost().getHostName();
         String hostname;
@@ -138,9 +159,19 @@ public class MaraApplicationMaster {
             hostname = InetAddress.getLocalHost().getHostAddress();
         }
         int port = channel.localAddress().getPort();
-        trackingUrl = "http://" + hostname + ":" + port;
-        logger.info("Register application with trackingUrl: {}", trackingUrl);
-        this.amClient.registerApplicationMaster(hostname, port, trackingUrl);
+        AMEndPoint endPoint = new AMEndPoint();
+        endPoint.host = hostname;
+        endPoint.port = port;
+        endPoint.trackingUrl = "http://" + hostname + ":" + port;
+        return endPoint;
+    }
+
+    public void register() throws YarnException, IOException {
+        assert(channel != null);
+        AMEndPoint ep = getEndPoint();
+        trackingUrl = ep.trackingUrl;
+        logger.info("Register application with trackingUrl: {}", ep.trackingUrl);
+        this.amClient.registerApplicationMaster(ep.host, ep.port, ep.trackingUrl);
     }
 
     public void unregister(FinalApplicationStatus status) throws YarnException, IOException {
@@ -194,6 +225,19 @@ public class MaraApplicationMaster {
         return Integer.parseInt(v);
     }
 
+    private void loadPlugins() {
+        try {
+            ServiceLoader<ApplicationMasterPlugin> plugins = ServiceLoader.load(ApplicationMasterPlugin.class);
+            Iterator<ApplicationMasterPlugin> it = plugins.iterator();
+            while(it.hasNext()) {
+                ApplicationMasterPlugin plugin = it.next();
+                applicationPlugins.add(plugin);
+            }
+        } catch (Exception ex) {
+            logger.warn("Failed to load plugin", ex);
+        }
+    }
+
     public static void main(String[] args) throws Exception {
         logger.info("Starting Application Master");
         Options options = setupOptions();
@@ -204,6 +248,12 @@ public class MaraApplicationMaster {
         arguments.checkArguments();
         applicationMaster.arguments = arguments;
         logger.info("Checked arguments of Application Master {}", arguments);
+        applicationMaster.loadPlugins();
+        logger.info("Loaded application {} plugins: ", applicationMaster.applicationPlugins.size());
+        for (ApplicationMasterPlugin plugin: applicationMaster.applicationPlugins) {
+            logger.info("{}", plugin.name());
+            plugin.start(applicationMaster);
+        }
         logger.info("Starting http server");
         applicationMaster.startHttpServer();
         Runtime.getRuntime().addShutdownHook(new Thread(applicationMaster::stopHttpServer));
@@ -229,6 +279,15 @@ public class MaraApplicationMaster {
                 }
             }
         }
+        for (ApplicationMasterPlugin plugin: applicationMaster.applicationPlugins) {
+            plugin.stop();
+        }
         System.exit(0);
+    }
+
+    public static class AMEndPoint {
+        public String host;
+        public int port;
+        public String trackingUrl;
     }
 }

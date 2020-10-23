@@ -36,7 +36,7 @@ public class PageHandler implements Handler {
             throws HandlerErrorException {
         InputStream indexHtmlStream = this.getClass().getResourceAsStream(urlParams.get("path"));
         if (indexHtmlStream == null)
-            throw new HandlerErrorException(HttpResponseStatus.NOT_FOUND, "resource not found");
+            throw new HandlerErrorException(HttpResponseStatus.NOT_FOUND, new Exception("resource not found"));
         try {
             byte[] content = IOUtils.toByteArray(indexHtmlStream);
             int i = urlParams.get("path").lastIndexOf('.');
@@ -47,7 +47,7 @@ public class PageHandler implements Handler {
                         mime.getOrDefault(urlParams.get("path").substring(i), "text/html; charset=UTF-8"));
             }
         } catch (IOException ex) {
-            throw new HandlerErrorException(HttpResponseStatus.INTERNAL_SERVER_ERROR, ex.toString());
+            throw new HandlerErrorException(HttpResponseStatus.INTERNAL_SERVER_ERROR, ex);
         }
     }
 }

@@ -24,12 +24,18 @@ public class ExecutorRunnable implements Runnable {
     private final Container container;
     private String commandLine;
     private NMClient nmClient;
+    private List<ExecutorHook> hooks;
 
-    public ExecutorRunnable(Configuration configuration, Container container, String commandLine, NMClient nmClient) {
+    public ExecutorRunnable(Configuration configuration,
+                            Container container,
+                            String commandLine,
+                            NMClient nmClient,
+                            List<ExecutorHook> hooks) {
         this.conf = configuration;
         this.container = container;
         this.commandLine = commandLine;
         this.nmClient = nmClient;
+        this.hooks = hooks;
     }
 
     private LocalResource setupLocalResource(
@@ -86,6 +92,14 @@ public class ExecutorRunnable implements Runnable {
         for (Map.Entry<String, String> entry: all.entrySet()) {
             if (entry.getKey().startsWith(EXECUTOR_LAUNCH_ENV_PREFIX)) {
                 executorEnvs.put(entry.getKey().substring(EXECUTOR_LAUNCH_ENV_PREFIX.length()), entry.getValue());
+            }
+        }
+        if (hooks != null) {
+            for (ExecutorHook hook: hooks) {
+                if (hook == null) {
+                    continue;
+                }
+                hook.hookPrepareExecutorEnvironments(executorEnvs);
             }
         }
         return executorEnvs;

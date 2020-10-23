@@ -8,6 +8,8 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.*;
+import org.apache.commons.httpclient.util.ExceptionUtil;
+import org.apache.commons.lang.exception.ExceptionUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,9 +18,15 @@ import java.util.Map;
 public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
     private List<Handler> handlers;
 
-    public HttpRequestHandler(MaraApplicationMaster applicationMaster) {
+    public HttpRequestHandler(MaraApplicationMaster applicationMaster, Iterable<Handler> customHandlers) {
         this.handlers = new ArrayList<>();
         this.handlers.add(new ApplicationHandler(applicationMaster));
+        // add customHandlers from plugin if present
+        if (customHandlers != null) {
+            for (Handler handler: customHandlers) {
+                this.handlers.add(handler);
+            }
+        }
         // PageHandler should be always the last handler added
         this.handlers.add(new PageHandler());
     }
@@ -59,7 +67,7 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
                 }
                 response.headers().set(HttpHeaderNames.CONTENT_TYPE, result.contentType);
             } else {
-                throw new HandlerErrorException(HttpResponseStatus.NOT_FOUND, "no match handler");
+                throw new HandlerErrorException(HttpResponseStatus.NOT_FOUND, new Exception("no match handler"));
             }
         } catch (HandlerErrorException ex) {
             response = createFromException(ex);
@@ -69,7 +77,8 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
 
     private FullHttpResponse createFromException(HandlerErrorException exception)
             throws JsonProcessingException {
-        AckResponse response = AckResponse.build(exception.status.codeAsText().toString(), exception.message);
+        AckResponse response = AckResponse.build(exception.status.codeAsText().toString(),
+                ExceptionUtils.getFullStackTrace(exception.e));
         byte[] buffer = JsonUtil._mapper.writeValueAsBytes(response);
         FullHttpResponse httpResp = new DefaultFullHttpResponse(
                 HttpVersion.HTTP_1_1,
