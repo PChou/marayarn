@@ -25,4 +25,4 @@ hadoop/
 hadoop-kerberos/
 hadoop-test/
 marayarn_pkg/
-marayarn/marayarn-cli*
+marayarn_pkg/marayarn-cli*

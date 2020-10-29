@@ -1,7 +1,7 @@
 package com.eoi.marayarn.clickhouse.sinker;
 
 import com.eoi.marayarn.clickhouse.sinker.parse.types.*;
-import com.eoi.marayarn.clickhouse.sinker.protobuf.Types;
+import com.eoi.marayarn.prometheus.protobuf.Types;
 
 import java.util.ArrayList;
 import java.util.Collections;

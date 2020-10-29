@@ -9,6 +9,7 @@ public class ApplicationInfo {
     public long startTime;
     public String trackingUrl;
     public String logUrl;
+    public String dashboardUrl; // full grafana dashboardUrl
     public ApplicationMasterArguments arguments;
     public int numRunningExecutors;
     public int numTotalExecutors;

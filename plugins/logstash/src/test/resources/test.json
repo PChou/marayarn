@@ -1,0 +1,98 @@
+{
+  "process" : {
+    "max_file_descriptors" : 10240,
+    "cpu" : {
+      "percent" : 1
+    },
+    "open_file_descriptors" : 106
+  },
+  "pipelines" : [ {
+    "queue" : {
+      "type" : "memory",
+      "queue_size_in_bytes" : 0,
+      "events_count" : 0,
+      "max_queue_size_in_bytes" : 0
+    },
+    "id" : "main",
+    "hash" : "4dbe1b282a0265b7c90ae9212a3b4bef55168d267004e5124a3486f9151d4188",
+    "ephemeral_id" : "cd9d400d-7fa1-4a71-9176-263e0a945798",
+    "events" : {
+      "in" : 6,
+      "filtered" : 6,
+      "duration_in_millis" : 832,
+      "out" : 6,
+      "queue_push_duration_in_millis" : 1
+    },
+    "reloads" : {
+      "failures" : 0,
+      "successes" : 0
+    },
+    "vertices" : [ {
+      "pipeline_ephemeral_id" : "cd9d400d-7fa1-4a71-9176-263e0a945798",
+      "events_out" : 6,
+      "id" : "fc1bd2827edc6b55a3caf4af83c5ac8c5c32b84cb54453bdac8c0d1dcb37ee46",
+      "queue_push_duration_in_millis" : 1
+    }, {
+      "pipeline_ephemeral_id" : "cd9d400d-7fa1-4a71-9176-263e0a945798",
+      "events_out" : 6,
+      "events_in" : 6,
+      "id" : "47e3be4432eda99c8d50ea91fdec98aa9c3d5689589ddd3cfdbd62b43746d841",
+      "duration_in_millis" : 3794
+    } ]
+  } ],
+  "os" : {
+    "cpu" : {
+      "load_average" : {
+        "1m" : 1.8017578125
+      }
+    }
+  },
+  "timestamp" : "2020-10-27T17:58:59.237+08:00",
+  "queue" : {
+    "events_count" : 0
+  },
+  "jvm" : {
+    "mem" : {
+      "heap_used_in_bytes" : 280374160,
+      "heap_used_percent" : 26,
+      "heap_max_in_bytes" : 1038876672
+    },
+    "uptime_in_millis" : 1070677,
+    "gc" : {
+      "collectors" : {
+        "old" : {
+          "collection_time_in_millis" : 341,
+          "collection_count" : 2
+        },
+        "young" : {
+          "collection_time_in_millis" : 935,
+          "collection_count" : 10
+        }
+      }
+    }
+  },
+  "events" : {
+    "in" : 6,
+    "filtered" : 6,
+    "duration_in_millis" : 832,
+    "out" : 6
+  },
+  "reloads" : {
+    "failures" : 0,
+    "successes" : 0
+  },
+  "logstash" : {
+    "uuid" : "45e35ccc-962c-4613-9e9e-dad635085a9d",
+    "version" : "7.3.0",
+    "http_address" : "127.0.0.1:9600",
+    "name" : null,
+    "host" : null,
+    "ephemeral_id" : "b04d2553-5d05-4c17-867f-365222b39860",
+    "status" : "green",
+    "snapshot" : false,
+    "pipeline" : {
+      "workers" : 4,
+      "batch_size" : 125
+    }
+  }
+}

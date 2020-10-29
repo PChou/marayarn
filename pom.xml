@@ -15,6 +15,7 @@
     <module>marayarn-common</module>
     <module>marayarn-web</module>
     <module>plugins/ck-sinker</module>
+    <module>plugins/logstash</module>
   </modules>
 
   <name>marayarn</name>

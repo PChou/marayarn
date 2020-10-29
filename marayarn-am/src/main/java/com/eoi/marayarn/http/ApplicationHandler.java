@@ -1,6 +1,7 @@
 package com.eoi.marayarn.http;
 
 import com.eoi.marayarn.ApplicationMasterArguments;
+import com.eoi.marayarn.ApplicationMasterPlugin;
 import com.eoi.marayarn.MaraApplicationMaster;
 import com.eoi.marayarn.YarnAllocator;
 import com.eoi.marayarn.http.model.*;
@@ -9,6 +10,7 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class ApplicationHandler extends ApiHandler {
@@ -68,6 +70,18 @@ public class ApplicationHandler extends ApiHandler {
         appInfo.applicationId = applicationMaster.applicationAttemptId.getApplicationId().toString();
         appInfo.startTime = applicationMaster.amClient.getStartTime();
         appInfo.trackingUrl = applicationMaster.trackingUrl;
+        // set dashboardUrl if needed
+        String grafana = System.getenv(MaraApplicationMaster.GRAFANA_URL_ENV_KEY);
+        if (grafana != null && !grafana.isEmpty()) {
+            List<ApplicationMasterPlugin> pluginList = applicationMaster.getApplicationPlugins();
+            for (ApplicationMasterPlugin plugin: pluginList) {
+                String gdId = plugin.grafanaDashboardId();
+                if (gdId != null && !gdId.isEmpty()) {
+                    appInfo.dashboardUrl =
+                            String.format("%s/d/%s?var-applicationId=%s&kiosk=tv", grafana, gdId, appInfo.applicationId);
+                }
+            }
+        }
         appInfo.arguments = applicationMaster.arguments;
         appInfo.numTotalExecutors = applicationMaster.allocator.targetNumExecutors;
         appInfo.numRunningExecutors = applicationMaster.allocator.getRunningExecutors();

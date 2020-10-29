@@ -20,6 +20,14 @@ public interface ApplicationMasterPlugin {
     ExecutorHook getExecutorHook();
 
     /**
+     * dashboardId of grafana, GRAFANA_BASE_URL must be set as am's environment
+     * @return
+     */
+    default String grafanaDashboardId() {
+        return null;
+    }
+
+    /**
      * start used to initialize plugin when application master, and will be called before any other
      * @param applicationMaster
      */

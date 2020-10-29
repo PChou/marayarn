@@ -4,7 +4,7 @@ import com.eoi.marayarn.clickhouse.sinker.parse.text.TextPrometheusMetricDataPar
 import com.eoi.marayarn.clickhouse.sinker.parse.types.Histogram;
 import com.eoi.marayarn.clickhouse.sinker.parse.types.Metric;
 import com.eoi.marayarn.clickhouse.sinker.parse.types.MetricFamily;
-import com.eoi.marayarn.clickhouse.sinker.protobuf.Types;
+import com.eoi.marayarn.prometheus.protobuf.Types;
 import org.junit.Assert;
 import org.junit.Test;
 

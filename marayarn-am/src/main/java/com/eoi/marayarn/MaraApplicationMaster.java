@@ -2,6 +2,8 @@ package com.eoi.marayarn;
 
 import com.eoi.marayarn.http.Handler;
 import com.eoi.marayarn.http.HandlerFactory;
+import com.eoi.marayarn.prometheus.protobuf.Types;
+import com.eoi.marayarn.prometheus.util.RemoteWriter;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -29,14 +31,19 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetAddress;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.ServiceLoader;
+import java.net.URI;
+import java.net.URL;
+import java.util.*;
 
 import static com.eoi.marayarn.Constants.AM_ENV_COMMANDLINE;
 
 public class MaraApplicationMaster {
+    // http://xxx.xxx.xxx.xxx:8086/api/v1/prom/write?db=xxx
+    public static final String INFLUXDB_URL_ENV_KEY = "INFLUXDB_URL";
+    // http://xxx.xxx.xxx.xxx:3000
+    public static final String GRAFANA_URL_ENV_KEY = "GRAFANA_BASE_URL";
+    public static final String GRAFANA_DASHBOARD_ID_ENV_KEY = "GRAFANA_DASHBOARD_ID";
+
     private static Logger logger = LoggerFactory.getLogger(MaraApplicationMaster.class);
     private NioServerSocketChannel channel;
     public YarnConfiguration configuration;
@@ -52,6 +59,19 @@ public class MaraApplicationMaster {
     private volatile boolean finished;
 
     private List<ApplicationMasterPlugin> applicationPlugins = new ArrayList<>();
+
+    private URI influxDbRemoteWriteEndpoint = null;
+
+    public MaraApplicationMaster() {
+        String remoteWriteEndpoint = System.getenv(INFLUXDB_URL_ENV_KEY);
+        if (remoteWriteEndpoint != null && !remoteWriteEndpoint.isEmpty()) {
+            try {
+                influxDbRemoteWriteEndpoint = new URL(remoteWriteEndpoint).toURI();
+            } catch (Exception e) {
+                logger.warn("Failed to init influxDbRemoteWriteEndpoint", e);
+            }
+        }
+    }
 
     public void terminate() throws Exception {
         this.finished = true;
@@ -87,7 +107,7 @@ public class MaraApplicationMaster {
                 .addLast(eventHandlerGroup, new HttpRequestHandler(this, pluginHandlers));
     }
 
-    public void startHttpServer() throws Exception {
+    public void startHttpServer(Integer port) throws Exception {
         ServerBootstrap bootstrap = new ServerBootstrap();
         NioEventLoopGroup group = new NioEventLoopGroup();
         NioEventLoopGroup workerGroup = new NioEventLoopGroup();
@@ -103,7 +123,7 @@ public class MaraApplicationMaster {
                         initializePipeline(ch);
                     }
                 });
-        ChannelFuture f = bootstrap.bind(0).sync();
+        ChannelFuture f = bootstrap.bind(Optional.ofNullable(port).orElse(0)).sync();
         if (f.isSuccess()) {
             channel = (NioServerSocketChannel) f.channel();
             logger.info("bind and listen at {}", channel.localAddress());
@@ -238,6 +258,19 @@ public class MaraApplicationMaster {
         }
     }
 
+    // for Test
+    public void addPlugin(ApplicationMasterPlugin plugin) {
+        this.applicationPlugins.add(plugin);
+    }
+
+    public List<ApplicationMasterPlugin> getApplicationPlugins() {
+        return applicationPlugins;
+    }
+
+    public void writeMetricsToInfluxdb(List<Types.TimeSeries> timeSeriesList) throws Exception {
+        RemoteWriter.writeTimeSeries(timeSeriesList, influxDbRemoteWriteEndpoint);
+    }
+
     public static void main(String[] args) throws Exception {
         logger.info("Starting Application Master");
         Options options = setupOptions();
@@ -255,7 +288,7 @@ public class MaraApplicationMaster {
             plugin.start(applicationMaster);
         }
         logger.info("Starting http server");
-        applicationMaster.startHttpServer();
+        applicationMaster.startHttpServer(null);
         Runtime.getRuntime().addShutdownHook(new Thread(applicationMaster::stopHttpServer));
         applicationMaster.allocator = new YarnAllocator(arguments);
         logger.info("Initializing and registering Application Master");

@@ -1,0 +1,14 @@
+.process.cpu.percent,gauge
+.queue.events_count,gauge
+.jvm.mem.heap_used_in_bytes,gauge
+.jvm.mem.heap_used_percent,gauge
+.jvm.mem.heap_max_in_bytes,gauge
+.jvm.uptime_in_millis,gauge
+.jvm.gc.collectors.old.collection_time_in_millis,counter
+.jvm.gc.collectors.old.collection_count,counter
+.jvm.gc.collectors.young.collection_time_in_millis,counter
+.jvm.gc.collectors.young.collection_count,counter
+.events.in,counter
+.events.filtered,counter
+.events.duration_in_millis,gauge
+.events.out,counter

@@ -1,4 +1,4 @@
-package com.eoi.marayarn.clickhouse.sinker;
+package com.eoi.marayarn.logstash;
 
 import com.eoi.marayarn.ApplicationMasterPlugin;
 import com.eoi.marayarn.ExecutorHook;
@@ -7,28 +7,27 @@ import com.eoi.marayarn.http.HandlerFactory;
 
 import static com.eoi.marayarn.MaraApplicationMaster.GRAFANA_DASHBOARD_ID_ENV_KEY;
 
-public class CKSinkerAMPlugin implements ApplicationMasterPlugin {
+public class LogstashAMPlugin implements ApplicationMasterPlugin {
 
     private MaraApplicationMaster applicationMaster;
 
     @Override
     public String name() {
-        return "ck-sinker";
+        return "logstash";
     }
 
-    @Override
     public String grafanaDashboardId() {
         return System.getenv(GRAFANA_DASHBOARD_ID_ENV_KEY);
     }
 
     @Override
     public HandlerFactory handlerFactory() {
-        return new CKSinkerAMHandlerFactory(applicationMaster);
+        return new LogstashHandlerFactory(applicationMaster);
     }
 
     @Override
     public ExecutorHook getExecutorHook() {
-        return new CKSinkerExecutorHook(this.applicationMaster);
+        return new LogstashExecutorHook(applicationMaster);
     }
 
     @Override
@@ -38,6 +37,5 @@ public class CKSinkerAMPlugin implements ApplicationMasterPlugin {
 
     @Override
     public void stop() {
-        return;
     }
 }
