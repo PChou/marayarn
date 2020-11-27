@@ -6,7 +6,7 @@ import com.eoi.marayarn.MaraApplicationMaster;
 import java.util.Map;
 
 public class CKSinkerExecutorHook implements ExecutorHook {
-    public static final String CALL_BACK_ENDPOINT = "METRICS_PUSH_GATEWAY_ADDR";
+    public static final String CALL_BACK_ENDPOINT = "METRIC_PUSH_GATEWAY_ADDRS";
 
     private MaraApplicationMaster applicationMaster;
 
