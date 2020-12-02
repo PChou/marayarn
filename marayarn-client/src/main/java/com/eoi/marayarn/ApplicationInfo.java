@@ -7,6 +7,7 @@ public class ApplicationInfo {
     private long startTime;
     private String trackingUrl;
     private String logUrl;
+    public String dashboardUrl; // full grafana dashboardUrl
     private AMArguments arguments;
     private int numRunningExecutors;
     private int numTotalExecutors;
@@ -112,5 +113,13 @@ public class ApplicationInfo {
     public ApplicationInfo setCompletedContainers(List<ContainerInfo> completedContainers) {
         this.completedContainers = completedContainers;
         return this;
+    }
+
+    public String getDashboardUrl() {
+        return dashboardUrl;
+    }
+
+    public void setDashboardUrl(String dashboardUrl) {
+        this.dashboardUrl = dashboardUrl;
     }
 }
