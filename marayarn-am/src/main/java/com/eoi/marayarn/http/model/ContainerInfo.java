@@ -3,7 +3,7 @@ package com.eoi.marayarn.http.model;
 import com.eoi.marayarn.YarnAllocator;
 
 public class ContainerInfo {
-    public String Id;
+    public String id;
     public String nodeId;
     public String nodeHttpAddress;
     public String logUrl;
@@ -15,10 +15,10 @@ public class ContainerInfo {
         if (cas == null)
             return null;
         ContainerInfo containerInfo = new ContainerInfo();
-        containerInfo.Id = cas.container.getId().toString();
+        containerInfo.id = cas.container.getId().toString();
         containerInfo.nodeId = cas.container.getNodeId().getHost();
         containerInfo.nodeHttpAddress = cas.container.getNodeHttpAddress();
-        containerInfo.logUrl = String.format("%s://%s/node/containerlogs/%s/%s", webSchema, containerInfo.nodeHttpAddress, containerInfo.Id, user);
+        containerInfo.logUrl = String.format("%s://%s/node/containerlogs/%s/%s", webSchema, containerInfo.nodeHttpAddress, containerInfo.id, user);
         containerInfo.vcore = cas.container.getResource().getVirtualCores();
         containerInfo.memory = cas.container.getResource().getMemory();
         containerInfo.state = cas.state;

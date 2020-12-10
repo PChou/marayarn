@@ -1,7 +1,7 @@
 package com.eoi.marayarn;
 
 public class ContainerInfo {
-    private String Id;
+    private String id;
     private String nodeId;
     private String nodeHttpAddress;
     private String logUrl;
@@ -10,11 +10,11 @@ public class ContainerInfo {
     private int state;
 
     public String getId() {
-        return Id;
+        return id;
     }
 
     public ContainerInfo setId(String id) {
-        Id = id;
+        this.id = id;
         return this;
     }
 
