@@ -317,6 +317,14 @@ public class YarnAllocator {
             return;
         for (Container container: acs) {
             if (!allocatedContainers.containsKey(container.getId())) {
+                // 此处先判断一下即将加进来的container进来后是不是已经超过targetNumExecutors。
+                // 因为如果快速进行扩容+缩容操作，有可能之前的请求已经发出去了，没来得及cancel
+                // 这个时候container还是会分配
+                // 遇到这种情况，应该放弃这个container，否则数字的加减会出问题
+                if (allocatedContainers.size() >= targetNumExecutors) {
+                    amrmClient.releaseAssignedContainer(container.getId());
+                    continue;
+                }
                 ContainerLocation containerLocation = getMatchedLocation(container);
                 if (containerLocation == null) {
                     logger.error("Failed to match location request by container");
