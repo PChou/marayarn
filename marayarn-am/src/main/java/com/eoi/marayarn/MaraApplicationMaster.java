@@ -5,10 +5,7 @@ import com.eoi.marayarn.http.HandlerFactory;
 import com.eoi.marayarn.prometheus.protobuf.Types;
 import com.eoi.marayarn.prometheus.util.RemoteWriter;
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelOption;
+import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
@@ -16,8 +13,6 @@ import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpRequestDecoder;
 import io.netty.handler.codec.http.HttpResponseEncoder;
 import io.netty.handler.stream.ChunkedWriteHandler;
-import io.netty.util.concurrent.DefaultEventExecutorGroup;
-import io.netty.util.concurrent.EventExecutorGroup;
 import org.apache.commons.cli.*;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.api.records.ApplicationAttemptId;
@@ -85,7 +80,6 @@ public class MaraApplicationMaster {
     private void initializePipeline(SocketChannel channel) {
         if ( channel == null )
             return;
-        EventExecutorGroup eventHandlerGroup = new DefaultEventExecutorGroup(5);
         List<Handler> pluginHandlers = new ArrayList<>();
         for (ApplicationMasterPlugin plugin: applicationPlugins) {
             HandlerFactory handlerFactory = plugin.handlerFactory();
@@ -104,7 +98,7 @@ public class MaraApplicationMaster {
                 .addLast("http-aggregator", new HttpObjectAggregator(512*1024)) // 目的是将多个消息转换为单一的request或者response对象
                 .addLast("http-encoder", new HttpResponseEncoder())//响应解码器
                 .addLast("http-chunked",new ChunkedWriteHandler())//目的是支持异步大文件传输
-                .addLast(eventHandlerGroup, new HttpRequestHandler(this, pluginHandlers));
+                .addLast(new HttpRequestHandler(this, pluginHandlers));
     }
 
     public void startHttpServer(Integer port) throws Exception {
