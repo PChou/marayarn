@@ -5,6 +5,7 @@ import com.eoi.marayarn.ApplicationMasterArguments;
 import java.util.List;
 
 public class ApplicationInfo {
+    public String jobId;
     public String applicationId;
     public long startTime;
     public String trackingUrl;

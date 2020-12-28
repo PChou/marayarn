@@ -38,6 +38,9 @@ public class MaraApplicationMaster {
     // http://xxx.xxx.xxx.xxx:3000
     public static final String GRAFANA_URL_ENV_KEY = "GRAFANA_BASE_URL";
     public static final String GRAFANA_DASHBOARD_ID_ENV_KEY = "GRAFANA_DASHBOARD_ID";
+    // use this value as jobId of influxdb tag, to figure out the job
+    // if not set yarn application id will be use
+    public static final String JOBID_ENV_KEY = "MARAYARN_JOB_ID";
 
     private static Logger logger = LoggerFactory.getLogger(MaraApplicationMaster.class);
     private NioServerSocketChannel channel;
@@ -65,6 +68,15 @@ public class MaraApplicationMaster {
             } catch (Exception e) {
                 logger.warn("Failed to init influxDbRemoteWriteEndpoint", e);
             }
+        }
+    }
+
+    public String getJobId() {
+        String jobId = System.getenv(JOBID_ENV_KEY);
+        if (jobId != null && !jobId.isEmpty()) {
+            return jobId;
+        } else {
+            return applicationAttemptId.getApplicationId().toString();
         }
     }
 

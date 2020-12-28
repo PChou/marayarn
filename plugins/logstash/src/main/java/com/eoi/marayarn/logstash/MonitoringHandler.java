@@ -56,7 +56,7 @@ public class MonitoringHandler implements Handler {
                         LogstashStatsMetricsPicker picker = new LogstashStatsMetricsPicker(parsed);
                         picker.visit();
                         List<Types.TimeSeries> ts = toProm(picker.metricValues, picker.metricTypes, timestamp,
-                                this.applicationMaster.applicationAttemptId.getApplicationId().toString());
+                                this.applicationMaster.getJobId());
                         applicationMaster.writeMetricsToInfluxdb(ts);
                     }
                 }

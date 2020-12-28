@@ -67,6 +67,7 @@ public class ApplicationHandler extends ApiHandler {
 
     private ApplicationInfo getApplicationIfo() {
         ApplicationInfo appInfo = new ApplicationInfo();
+        appInfo.jobId = applicationMaster.getJobId();
         appInfo.applicationId = applicationMaster.applicationAttemptId.getApplicationId().toString();
         appInfo.startTime = applicationMaster.amClient.getStartTime();
         appInfo.trackingUrl = applicationMaster.trackingUrl;
@@ -78,7 +79,7 @@ public class ApplicationHandler extends ApiHandler {
                 String gdId = plugin.grafanaDashboardId();
                 if (gdId != null && !gdId.isEmpty()) {
                     appInfo.dashboardUrl =
-                            String.format("%s/d/%s?var-applicationId=%s&kiosk=tv", grafana, gdId, appInfo.applicationId);
+                            String.format("%s/d/%s?var-applicationId=%s&kiosk=tv", grafana, gdId, appInfo.jobId);
                 }
             }
         }

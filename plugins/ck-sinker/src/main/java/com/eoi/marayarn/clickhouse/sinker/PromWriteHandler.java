@@ -44,7 +44,7 @@ public class PromWriteHandler implements Handler {
             List<Types.TimeSeries> tsList = new ArrayList<>(64);
             while (metricFamily != null) {
                 for (Metric metric: metricFamily.getMetrics()) {
-                    PromConverter.convertAndFill(tsList, metric, timestamp, this.applicationMaster.applicationAttemptId.getApplicationId().toString());
+                    PromConverter.convertAndFill(tsList, metric, timestamp, this.applicationMaster.getJobId());
                 }
                 metricFamily = dataParser.parse();
             }
