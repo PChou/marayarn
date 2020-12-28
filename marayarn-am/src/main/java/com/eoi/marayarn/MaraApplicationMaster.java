@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 import static com.eoi.marayarn.Constants.AM_ENV_COMMANDLINE;
@@ -236,7 +237,7 @@ public class MaraApplicationMaster {
         arguments.executorCores = getIntOrDefault(commandLine, "cores", 0);
         arguments.executorMemory = getIntOrDefault(commandLine, "memory", 0);
         arguments.queue = commandLine.getOptionValue("queue");
-        arguments.commandLine = System.getenv(AM_ENV_COMMANDLINE);
+        arguments.commandLine = new String(Base64.getDecoder().decode(System.getenv(AM_ENV_COMMANDLINE)), StandardCharsets.UTF_8);
         arguments.principal = commandLine.getOptionValue("principal");
         arguments.keytab = commandLine.getOptionValue("keytab");
         arguments.constraints = commandLine.getOptionValue("constraints");

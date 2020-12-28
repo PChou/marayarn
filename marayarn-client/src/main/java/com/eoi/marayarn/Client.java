@@ -21,6 +21,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.security.PrivilegedExceptionAction;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -298,7 +299,9 @@ public class Client implements Closeable {
             (ClientArguments arguments, Map<String, LocalResource> artifacts) {
         Map<String, String> env = new HashMap<>();
         // setup command line
-        env.put(AM_ENV_COMMANDLINE, arguments.getCommand());
+        // convert command line to base64 encoded string, so that prevent auto environment evaluation by yarn
+        String safeCommandLine = Base64.getEncoder().encodeToString(arguments.getCommand().getBytes(StandardCharsets.UTF_8));
+        env.put(AM_ENV_COMMANDLINE, safeCommandLine);
         // setup class path
         StringBuilder classPathEnv = new StringBuilder(ApplicationConstants.Environment.CLASSPATH.$$());
         classPathEnv.append(ApplicationConstants.CLASS_PATH_SEPARATOR);
