@@ -234,8 +234,13 @@ public class YarnAllocator {
             return Collections.singletonList(new ContainerLocation(null, null));
         }
         try {
-            return Locality.judgeLocationBy(
+            logger.info("Calculating new locality for {} nodes", candidates.size());
+//                    candidates.stream().map(NodeReport::getNodeId).map(NodeId::getHost)
+//                            .reduce("", (a, b) -> a + "," + b));
+            List<ContainerLocation> calc = Locality.judgeLocationBy(
                     candidates, arguments.numExecutors, arguments.executorCores, arguments.executorMemory, arguments.constraints);
+            logger.info("Calculated {} candidates location", calc.size());
+            return calc;
         } catch (InvalidConstraintsSettingException e) {
             logger.warn("Failed to initialize locations by {}", arguments.constraints, e);
             return Collections.singletonList(new ContainerLocation(null, null));
@@ -349,9 +354,6 @@ public class YarnAllocator {
                 containerResource = Resource.newInstance(arguments.executorMemory, arguments.executorCores);
                 try {
                     List<NodeReport> nodeReports = ugi.doAs((PrivilegedExceptionAction<List<NodeReport>>) () -> yarnClient.getNodeReports());
-                    logger.info("Calculating new locality for nodes: {}",
-                            nodeReports.stream().map(NodeReport::getNodeId).map(NodeId::getHost)
-                                    .reduce("", (a, b) -> a + "," + b));
                     locations = initLocation(nodeReports, arguments);
                     for (ContainerLocation loc: locations) {
                         logger.info("{}", loc);
@@ -409,41 +411,92 @@ public class YarnAllocator {
         }
     }
 
+    /**
+     * get location that has maximum available and available must > 0
+     * if no location found return null
+     * @return
+     */
+    private Integer getAtMostAvailableLocation(Integer from) {
+        Integer index = null;
+        ContainerLocation containerLocation = null;
+        int f = from == null ? 0 : from;
+        if (f >= locations.size()) f = 0;
+        // from from to end
+        for (int i = f; i < locations.size(); i++) {
+            ContainerLocation loc = locations.get(i);
+            int available = loc.getTopMostCount() - loc.getAllocatedCount() - loc.getPendingCount();
+            if (available < 0) {
+                continue;
+            }
+            if (containerLocation == null) {
+                containerLocation = loc;
+                index = i;
+                continue;
+            }
+            if (available > (containerLocation.getTopMostCount()
+                    - containerLocation.getAllocatedCount()
+                    - containerLocation.getPendingCount())) {
+                containerLocation = loc;
+                index = i;
+            }
+        }
+        // from 0 to from
+        for (int i = 0; i < from; i++) {
+            ContainerLocation loc = locations.get(i);
+            int available = loc.getTopMostCount() - loc.getAllocatedCount() - loc.getPendingCount();
+            if (available < 0) {
+                continue;
+            }
+            if (containerLocation == null) {
+                containerLocation = loc;
+                index = i;
+                continue;
+            }
+            if (available > (containerLocation.getTopMostCount()
+                    - containerLocation.getAllocatedCount()
+                    - containerLocation.getPendingCount())) {
+                containerLocation = loc;
+                index = i;
+            }
+        }
+        return index;
+    }
+
     private void updateResourceRequests() {
         // get the pending container request
         int pendingSize = getPendingAllocations();
         int missing = targetNumExecutors - pendingSize - allocatedContainers.size();
         if (missing > 0) {
+            int from = 0;
             // 表示还需要加入更多的container
             // 先根据locations进行均匀分配
-            while (missing > 0 && getNumAvailable() > 0) {
-                for (int j = 0; j < locations.size() && missing > 0; j++) {
-                    ContainerLocation loc = locations.get(j);
-                    if (locations.size() > 1 && loc.getPendingDelay() > PENDING_TIMEOUT_SEC) {
-                        // 如果超过一个loc，并且当前这个loc的pendingDelay > PENDING_TIMEOUT_SEC
-                        // 则不要在这个loc上分配，并重置loc的pendingDelay
-                        loc.setPendingDelay(0);
-                        continue;
-                    }
-                    // go through the preferred location
-                    int available = loc.getTopMostCount() - loc.getAllocatedCount() - loc.getPendingCount();
-                    // skip if no more can be allocated
-                    if (available <= 0)
-                        continue;
-                    logger.info("Requesting {} executor containers at {}, each with resource {}", 1, loc, containerResource);
-                    AMRMClient.ContainerRequest containerRequest =
-                            new AMRMClient.ContainerRequest(containerResource,
-                                    loc.getNode(),
-                                    loc.getRack(),
-                                    RM_REQUEST_PRIORITY,
-                                    //relaxLocality 如果不设置为false的话 yarn不一定会根据需求分配container
-                                    //当node和rack都是null的时候，必须设置relax为true
-                                    loc.getNode() == null && loc.getRack() == null,
-                                    null);
-                    amrmClient.addContainerRequest(containerRequest);
-                    loc.incrPendingCount();
-                    missing -= 1;
+            while (missing > 0) {
+                // 找最"富裕"的节点, 为了避免因为分配失败反复从某个节点开始，引入from
+                Integer index = getAtMostAvailableLocation(from);
+                if (index == null) {
+                    break;
                 }
+                from = index + 1;
+                ContainerLocation loc = locations.get(index);
+                if (locations.size() > 1 && loc.getPendingDelay() > PENDING_TIMEOUT_SEC) {
+                    // 如果超过一个loc，并且当前这个loc的pendingDelay > PENDING_TIMEOUT_SEC
+                    // 则不要在这个loc上分配，并重置loc的pendingDelay
+                    loc.setPendingDelay(0);
+                    continue;
+                }
+                logger.info("Requesting {} executor containers at {}, each with resource {}", 1, loc, containerResource);
+                AMRMClient.ContainerRequest containerRequest =
+                        new AMRMClient.ContainerRequest(containerResource,
+                                loc.getNode(),
+                                loc.getRack(),
+                                RM_REQUEST_PRIORITY,
+                                //relaxLocality 如果不设置为false的话 yarn不一定会根据需求分配container
+                                //当node和rack都是null的时候，必须设置relax为true
+                                loc.getNode() == null && loc.getRack() == null,
+                                null);
+                amrmClient.addContainerRequest(containerRequest);
+                loc.incrPendingCount();
+                missing -= 1;
             }
             if (missing > 0) {
                 logger.error("Not all required container can be requested, probably because the constraints");
@@ -535,7 +588,7 @@ public class YarnAllocator {
                     if (loc.getPendingDelay() > PENDING_TIMEOUT_SEC) {
                         logger.warn("Pending delay is over {}s, cancel {} requests at {}",
                                 PENDING_TIMEOUT_SEC, loc.getPendingCount(), loc);
-                        loc.decrPendingCount();
+                        loc.decrPendingCount2(loc.getPendingCount());
                         cancelPendingRequests(loc, loc.getPendingCount());
                     }
                 }

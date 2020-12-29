@@ -40,6 +40,9 @@ public class ApplicationMasterArguments {
                 ", executorMemory=" + executorMemory +
                 ", queue='" + queue + '\'' +
                 ", commandLine='" + commandLine + '\'' +
+                ", principal='" + principal + '\'' +
+                ", keytab='" + keytab + '\'' +
+                ", constraints='" + constraints + '\'' +
                 '}';
     }
 }

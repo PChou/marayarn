@@ -100,6 +100,10 @@ public class ContainerLocation {
         this.pendingCount -= 1;
     }
 
+    public void decrPendingCount2(int c) {
+        this.pendingCount -= c;
+    }
+
     public long getPendingDelay() {
         return pendingDelay;
     }
