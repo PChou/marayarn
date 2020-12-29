@@ -46,7 +46,7 @@ public class Client implements Closeable {
     private static final Pattern fragment = Pattern.compile("#.*$");
 
     private final YarnClient yarnClient;
-    protected final YarnConfiguration yarnConfiguration;
+    protected YarnConfiguration yarnConfiguration;
 
     public Client() {
         this.yarnClient = YarnClient.createYarnClient();
@@ -122,11 +122,11 @@ public class Client implements Closeable {
         }
     }
 
-    protected void initConfiguration(ClientArguments arguments) {
-        // check and set hadoopConfDir
+    private YarnConfiguration initConfigurationByPath(String specifiedHadoopConfPath) {
+        YarnConfiguration configuration = new YarnConfiguration();
         String[] possibleHadoopConfPaths = new String[3];
-        if (arguments.getHadoopConfDir() != null && !arguments.getHadoopConfDir().isEmpty()) {
-            possibleHadoopConfPaths[0] = arguments.getHadoopConfDir();
+        if (specifiedHadoopConfPath != null && !specifiedHadoopConfPath.isEmpty()) {
+            possibleHadoopConfPaths[0] = specifiedHadoopConfPath;
         } else {
             String hadoopConfiDir = System.getenv("HADOOP_CONF_DIR");
             String hadoopHome = System.getenv("HADOOP_HOME");
@@ -144,7 +144,7 @@ public class Client implements Closeable {
                     File[] files = FileUtil.listFiles(dir);
                     for (File file: files) {
                         if (file.isFile() && file.canRead() && file.getName().endsWith(".xml")) {
-                            this.yarnConfiguration.addResource(new Path(file.getAbsolutePath()));
+                            configuration.addResource(new Path(file.getAbsolutePath()));
                         }
                     }
                 } catch (Exception ex) {
@@ -153,7 +153,12 @@ public class Client implements Closeable {
             }
         }
         // TODO: add more fs impl to prevent ServiceLoader file override?
-        this.yarnConfiguration.set("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem");
+        configuration.set("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem");
+        return configuration;
+    }
+
+    protected void initConfiguration(ClientArguments arguments) {
+        this.yarnConfiguration = initConfigurationByPath(arguments.getHadoopConfDir());
     }
 
     protected ApplicationReport submitApplication(ClientArguments arguments) throws Exception {
@@ -259,13 +264,13 @@ public class Client implements Closeable {
         FileSystem.mkdirs(fs, dst, new FsPermission(STAGING_DIR_PERMISSION));
         // 上传AM
         Path src = new Path(arguments.getApplicationMasterJar());
-        Path destPath = copyFileToRemote(dst, src);
+        Path destPath = copyFileToRemote(dst, src, null);
         addLocalResource(localResources, AM_JAR_KEY, destPath, LocalResourceType.FILE, LocalResourceVisibility.APPLICATION);
         // 上传keytab
         if (arguments.getPrincipal() != null && !arguments.getPrincipal().isEmpty()
                 && arguments.getKeytab() != null && !arguments.getKeytab().isEmpty()) {
             Path keyTabSrc = new Path(arguments.getKeytab());
-            Path keyTabDestPath = copyFileToRemote(dst, keyTabSrc);
+            Path keyTabDestPath = copyFileToRemote(dst, keyTabSrc, null);
             addLocalResource(localResources, AM_KEY_TAB, keyTabDestPath, LocalResourceType.FILE, LocalResourceVisibility.APPLICATION);
         }
         // 上传自定义资源
@@ -279,7 +284,11 @@ public class Client implements Closeable {
                 String removeFragment = fragmentMatcher.replaceFirst("");
                 sFile = new Path(removeFragment);
             }
-            Path dFile = copyFileToRemote(dst, sFile);
+            YarnConfiguration configuration = null;
+            if (artifact.getHadoopConfDir() != null && !artifact.getHadoopConfDir().isEmpty()) {
+                configuration = initConfigurationByPath(artifact.getHadoopConfDir());
+            }
+            Path dFile = copyFileToRemote(dst, sFile, configuration);
             addLocalResource(localResources, fragment, dFile, artifact.getType(), artifact.getVisibility());
         }
         return localResources;
@@ -443,13 +452,13 @@ public class Client implements Closeable {
         }
     }
 
-    private Path copyFileToRemote(Path destDir, Path srcPath) throws Exception {
+    private Path copyFileToRemote(Path destDir, Path srcPath, YarnConfiguration srcConfiguration) throws Exception {
         // the reason why don't use Path.getFileSystem is that
         // Path.toUri() will not decode the encoding stuff
         // FileSystem destFs = destDir.getFileSystem(this.yarnConfiguration);
         // FileSystem srcFs = srcPath.getFileSystem(this.yarnConfiguration);
         FileSystem destFs = FileSystem.get(new URI(destDir.toString()), this.yarnConfiguration);
-        FileSystem srcFs = FileSystem.get(new URI(srcPath.toString()), this.yarnConfiguration);
+        FileSystem srcFs = FileSystem.get(new URI(srcPath.toString()), srcConfiguration == null ? this.yarnConfiguration : srcConfiguration);
         Path destPath = srcPath;
         if (!compareFs(srcFs, destFs)) {
             destPath = new Path(destDir, srcPath.getName());
@@ -469,7 +478,7 @@ public class Client implements Closeable {
     /**
      * Return whether the two file systems are the same.
      */
-    private boolean compareFs(FileSystem srcFS, FileSystem destFs) throws UnknownHostException {
+    private boolean compareFs(FileSystem srcFS, FileSystem destFs) {
         URI srcUri = srcFS.getUri();
         URI dstUri = destFs.getUri();
         if (srcUri.getScheme() == null || !srcUri.getScheme().equals(dstUri.getScheme())) {
@@ -483,8 +492,12 @@ public class Client implements Closeable {
         // name of the HDFS namespace. Those names won't resolve, so avoid even trying if they
         // match.
         if (srcHost != null && dstHost != null && !srcHost.equals(dstHost)) {
-            srcHost = InetAddress.getByName(srcHost).getCanonicalHostName();
-            dstHost = InetAddress.getByName(dstHost).getCanonicalHostName();
+            try {
+                srcHost = InetAddress.getByName(srcHost).getCanonicalHostName();
+                dstHost = InetAddress.getByName(dstHost).getCanonicalHostName();
+            } catch (UnknownHostException ex) {
+                return false;
+            }
         }
 
         return srcHost.equals(dstHost) && srcUri.getPort() == dstUri.getPort();

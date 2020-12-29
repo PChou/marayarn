@@ -7,6 +7,8 @@ public class Artifact {
     private String localPath;
     private LocalResourceType type;
     private LocalResourceVisibility visibility = LocalResourceVisibility.APPLICATION;
+    // since we need support file in another hdfs for localPath, so need to known the hadoopConfDir
+    private String hadoopConfDir;
 
     public String getLocalPath() {
         return localPath;
@@ -32,6 +34,15 @@ public class Artifact {
 
     public Artifact setVisibility(LocalResourceVisibility visibility) {
         this.visibility = visibility;
+        return this;
+    }
+
+    public String getHadoopConfDir() {
+        return hadoopConfDir;
+    }
+
+    public Artifact setHadoopConfDir(String hadoopConfDir) {
+        this.hadoopConfDir = hadoopConfDir;
         return this;
     }
 }

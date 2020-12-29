@@ -52,7 +52,7 @@ public class ClientTest {
         // environmentVariables.set("HADOOP_PROXY_USER", "root");
         ClientArguments arguments = new ClientArguments();
         arguments.setApplicationMasterJar("file://" + getProjectRoot() + "/marayarn-am/target/" + AM_JAR_NAME);
-        arguments.setApplicationName("marayarn_test1");
+        arguments.setApplicationName("clientTest_simple_shell_command");
         arguments.setHadoopConfDir(getProjectRoot() + "/hadoop-test");
         arguments.setCommand("while true; do date; sleep 5; done");
         arguments.setInstances(1);
@@ -67,7 +67,7 @@ public class ClientTest {
         // environmentVariables.set("HADOOP_PROXY_USER", "root");
         ClientArguments arguments = new ClientArguments();
         arguments.setApplicationMasterJar("file://" + getProjectRoot() + "/marayarn-am/target/" + AM_JAR_NAME);
-        arguments.setApplicationName("marayarn_test1");
+        arguments.setApplicationName("clientTest_simple_shell_command_with_env");
         arguments.setHadoopConfDir(getProjectRoot() + "/hadoop-test");
         arguments.setCommand("while true; do date; sleep 5; echo $env; done");
         arguments.setInstances(1);
@@ -75,6 +75,26 @@ public class ClientTest {
             put("env", "hello");
         }});
         // arguments.setUser("test1");
+        Client client = new Client();
+        ApplicationReport report = client.launch(arguments);
+        System.out.println(report.getTrackingUrl());
+    }
+
+    @Test
+    public void clientTest_artifact_cross_hadoop() throws Exception {
+        ClientArguments arguments = new ClientArguments();
+        arguments.setApplicationMasterJar("file://" + getProjectRoot() + "/marayarn-am/target/" + AM_JAR_NAME);
+        arguments.setApplicationName("clientTest_artifact_cross_hadoop");
+        arguments.setHadoopConfDir(getProjectRoot() + "/hadoop");
+        arguments.setCommand("while true; do date; sleep 5; echo $env; done");
+        arguments.setInstances(1);
+        List<Artifact> artifacts = new ArrayList<>();
+        Artifact routerTar = new Artifact()
+                .setLocalPath("hdfs://cdhnode2:8020/user/root/marayarn/upload/20201224/logstash.zip")
+                .setHadoopConfDir(getProjectRoot() + "/hadoop-test")
+                .setType(LocalResourceType.ARCHIVE);
+        artifacts.add(routerTar);
+        arguments.setArtifacts(artifacts);
         Client client = new Client();
         ApplicationReport report = client.launch(arguments);
         System.out.println(report.getTrackingUrl());
