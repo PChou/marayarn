@@ -221,6 +221,8 @@ public class MaraApplicationMaster {
                 .desc("The keytab").build();
         Option constraints =  new com.eoi.marayarn.OptionBuilder("constraints").hasArg(true).argName("string")
                 .desc("Constraints of scheduler").build();
+        Option retry =  new com.eoi.marayarn.OptionBuilder("retry").hasArg(true).argName("int")
+                .desc("Retry threshold for failed containers").build();
         options.addOption(instances);
         options.addOption(vcpu);
         options.addOption(memory);
@@ -228,6 +230,7 @@ public class MaraApplicationMaster {
         options.addOption(principal);
         options.addOption(keytab);
         options.addOption(constraints);
+        options.addOption(retry);
         return options;
     }
 
@@ -241,6 +244,7 @@ public class MaraApplicationMaster {
         arguments.principal = commandLine.getOptionValue("principal");
         arguments.keytab = commandLine.getOptionValue("keytab");
         arguments.constraints = commandLine.getOptionValue("constraints");
+        arguments.autoRetryThreshold = getIntOrDefault(commandLine, "retry", 1000);
         return arguments;
     }
 
@@ -309,7 +313,10 @@ public class MaraApplicationMaster {
         while(!applicationMaster.finished) {
             try {
                 applicationMaster.allocator.allocateResources();
-            } catch (Exception ex) {
+            } catch (AbortAllocationException aae) {
+                logger.error("Retry threshold exceeded({}), stop the application master", aae.getThreshold());
+                break;
+            } catch(Exception ex) {
                 logger.error("Reporter error ", ex);
             } finally {
                 try {

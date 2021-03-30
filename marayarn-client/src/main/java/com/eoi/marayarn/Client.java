@@ -186,7 +186,7 @@ public class Client implements Closeable {
         }
         submissionContext.setAMContainerSpec(amLaunchContext);
         submissionContext.setApplicationType(YARN_MARAYARN_APP_TYPE);
-        // submissionContext.setMaxAppAttempts();
+        submissionContext.setMaxAppAttempts(1);
         submissionContext.setQueue(arguments.getQueue());
         Resource capability = Records.newRecord(Resource.class);
         capability.setMemory(AM_MIN_MEMEORY);
@@ -384,6 +384,10 @@ public class Client implements Closeable {
             commands.add(arguments.getPrincipal());
             commands.add("--keytab");
             commands.add(AM_KEY_TAB);
+        }
+        if (arguments.getRetryThreshold() != null) {
+            commands.add("--retry");
+            commands.add(String.format("%d", arguments.getRetryThreshold()));
         }
         // ApplicationMaster arguments
         commands.add("1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stdout");

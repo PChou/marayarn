@@ -52,6 +52,8 @@ public class SubmitOptions extends CliOptions {
                 .desc("The constraints string that describe the locality requirement. see document for more information").build();
         Option proxyUser = new OptionBuilder("user").hasArg(true)
                 .desc("User to impersonate when submitting the application. This argument does not work with --principal / --keytab").build();
+        Option retry = new OptionBuilder("retry").hasArg(true)
+                .desc("Retry threshold for failed containers").build();
         options.addOption(name);
         options.addOption(queue);
         options.addOption(cpu);
@@ -66,6 +68,7 @@ public class SubmitOptions extends CliOptions {
         options.addOption(keytab);
         options.addOption(constraints);
         options.addOption(proxyUser);
+        options.addOption(retry);
         return options;
     }
 
@@ -91,6 +94,7 @@ public class SubmitOptions extends CliOptions {
         clientArguments.setKeytab(commandLine.getOptionValue("keytab", null));
         clientArguments.setConstraints(commandLine.getOptionValue("constraints", null));
         clientArguments.setUser(commandLine.getOptionValue("user", null));
+        clientArguments.setRetryThreshold(Integer.parseInt(commandLine.getOptionValue("retry", "1000")));
         // env for executor
         Properties envsProps = commandLine.getOptionProperties("E");
         Map<String, String> executorEnvs = new HashMap<>();

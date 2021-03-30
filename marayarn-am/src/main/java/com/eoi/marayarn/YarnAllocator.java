@@ -50,6 +50,7 @@ public class YarnAllocator {
     // 当restarting完成后，restarting重置为true，将pendingNumExecutors赋值给targetNumExecutors
     private boolean restarting = false;
     private int pendingNumExecutors = 0;
+    private int availableRetryCount = 0;
 
     // for test
     protected YarnAllocator(ApplicationMasterArguments arguments) {
@@ -74,6 +75,7 @@ public class YarnAllocator {
                 new LinkedBlockingQueue<Runnable>(),
                 new ThreadFactoryBuilder().setNameFormat("ContainerLauncher #%d").setDaemon(true).build());
         this.targetNumExecutors = arguments.numExecutors;
+        this.availableRetryCount = arguments.autoRetryThreshold;
         this.containerResource = Resource.newInstance(arguments.executorMemory, arguments.executorCores);
         this.allocatedContainers = new HashMap<>();
         this.completedContainers = new LinkedList<>();
@@ -381,7 +383,7 @@ public class YarnAllocator {
         }
     }
 
-    private void handleCompletedContainers(List<ContainerStatus> completedContainers) {
+    private void handleCompletedContainers(List<ContainerStatus> completedContainers) throws AbortAllocationException {
         if (Utils.ListEmpty(completedContainers))
             return;
         for (ContainerStatus status: completedContainers) {
@@ -400,6 +402,11 @@ public class YarnAllocator {
                 location.decrAllocatedCount();
                 location.removeDetail(status.getContainerId());
             }
+            // SUCCESS/KILLED_BY_APPMASTER
+            // Exit status: -100. Diagnostics: Container released by application
+            if (status.getExitStatus() != 0 && status.getExitStatus() != -105 && status.getExitStatus() != -100) {
+                this.availableRetryCount--;
+            }
             if (status.getExitStatus() == -103 || status.getExitStatus() == -104) {
                 logger.warn("Container killed by YARN for exceeding memory limits");
             } else if (status.getExitStatus() != 0) {
@@ -408,6 +415,9 @@ public class YarnAllocator {
                         status.getExitStatus(),
                         status.getDiagnostics());
             }
+        }
+        if (this.availableRetryCount < 0) {
+            throw new AbortAllocationException(this.arguments.autoRetryThreshold);
         }
     }
 

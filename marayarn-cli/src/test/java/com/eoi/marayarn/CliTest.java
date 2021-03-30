@@ -25,6 +25,7 @@ public class CliTest {
                 "--file", "file:///Users/pchou/Projects/java/marayarn/logback.xml",
                 "-Ea=b",
                 "-Ec=d",
+                "-retry=5",
         };
         CommandLineParser parser = new GnuParser();
         CommandLine commandLine = parser.parse(options, args);
@@ -40,6 +41,7 @@ public class CliTest {
         Assert.assertEquals("b", arguments.getExecutorEnvironments().get("a"));
         Assert.assertEquals("d", arguments.getExecutorEnvironments().get("c"));
         Assert.assertEquals(3, arguments.getArtifacts().size());
+        Assert.assertEquals(Integer.valueOf(5), arguments.getRetryThreshold());
         for (Artifact at: arguments.getArtifacts()) {
             if (at.getLocalPath().equals("file:///Users/pchou/Projects/java/marayarn/router.zip")) {
                 Assert.assertEquals(LocalResourceType.ARCHIVE, at.getType());

@@ -116,6 +116,12 @@ public class ClientArguments {
      */
     private String constraints;
 
+    /**
+     * 设置对container异常退出的重试次数
+     * 有时，由于配置错误container可能永远也不会正确运行，这种情况下可以设置一个最多重试次数
+     */
+    private Integer retryThreshold;
+
     public String getApplicationId() {
         return applicationId;
     }
@@ -250,6 +256,14 @@ public class ClientArguments {
 
     public void setConstraints(String constraints) {
         this.constraints = constraints;
+    }
+
+    public Integer getRetryThreshold() {
+        return retryThreshold;
+    }
+
+    public void setRetryThreshold(Integer retryThreshold) {
+        this.retryThreshold = retryThreshold;
     }
 
     private void checkIfNullOrEmpty(String t, String literal) throws InvalidClientArgumentException {

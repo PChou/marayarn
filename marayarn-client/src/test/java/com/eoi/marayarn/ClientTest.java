@@ -63,6 +63,34 @@ public class ClientTest {
     }
 
     @Test
+    public void clientTest_shell_with_limited_retry() throws Exception {
+        ClientArguments arguments = new ClientArguments();
+        arguments.setApplicationMasterJar("file://" + getProjectRoot() + "/marayarn-am/target/" + AM_JAR_NAME);
+        arguments.setApplicationName("clientTest_shell_with_limited_retry");
+        arguments.setHadoopConfDir(getProjectRoot() + "/hadoop");
+        arguments.setCommand("hile true; do date; sleep 5; done");
+        arguments.setInstances(1);
+        arguments.setRetryThreshold(3);
+        Client client = new Client();
+        ApplicationReport report = client.launch(arguments);
+        System.out.println(report.getTrackingUrl());
+    }
+
+    @Test
+    public void clientTest_shell_with_limited_retry2() throws Exception {
+        ClientArguments arguments = new ClientArguments();
+        arguments.setApplicationMasterJar("file://" + getProjectRoot() + "/marayarn-am/target/" + AM_JAR_NAME);
+        arguments.setApplicationName("clientTest_shell_with_limited_retry");
+        arguments.setHadoopConfDir(getProjectRoot() + "/hadoop");
+        arguments.setCommand("while true; do date; sleep 5; done");
+        arguments.setInstances(1);
+        arguments.setRetryThreshold(1);
+        Client client = new Client();
+        ApplicationReport report = client.launch(arguments);
+        System.out.println(report.getTrackingUrl());
+    }
+
+    @Test
     public void clientTest_simple_shell_command_with_env() throws Exception {
         // environmentVariables.set("HADOOP_PROXY_USER", "root");
         ClientArguments arguments = new ClientArguments();

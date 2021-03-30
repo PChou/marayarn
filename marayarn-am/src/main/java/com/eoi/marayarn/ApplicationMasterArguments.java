@@ -6,6 +6,7 @@ public class ApplicationMasterArguments {
     public int numExecutors;
     public int executorCores;
     public int executorMemory; //MB
+    public int autoRetryThreshold;
     public String queue;
     public String commandLine;
     public String principal;
