@@ -1,5 +1,7 @@
 package com.eoi.marayarn;
 
+import org.apache.hadoop.yarn.conf.YarnConfiguration;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -40,6 +42,8 @@ public class ClientArguments {
      * 4. java ClassPath
      */
     private String hadoopConfDir;
+
+    private YarnConfiguration configuration;
     /**
      * 设置yarn资源池的队列名，可不指定
      */
@@ -151,6 +155,14 @@ public class ClientArguments {
 
     public void setHadoopConfDir(String hadoopConfDir) {
         this.hadoopConfDir = hadoopConfDir;
+    }
+
+    public YarnConfiguration getConfiguration() {
+        return configuration;
+    }
+
+    public void setConfiguration(YarnConfiguration configuration) {
+        this.configuration = configuration;
     }
 
     public String getApplicationName() {

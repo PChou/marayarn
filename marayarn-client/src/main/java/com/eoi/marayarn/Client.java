@@ -1,5 +1,6 @@
 package com.eoi.marayarn;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.fs.*;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.security.Credentials;
@@ -158,7 +159,12 @@ public class Client implements Closeable {
     }
 
     protected void initConfiguration(ClientArguments arguments) {
-        this.yarnConfiguration = initConfigurationByPath(arguments.getHadoopConfDir());
+        if (arguments.getConfiguration() != null) {
+            // for test
+            this.yarnConfiguration = arguments.getConfiguration();
+        } else {
+            this.yarnConfiguration = initConfigurationByPath(arguments.getHadoopConfDir());
+        }
     }
 
     protected ApplicationReport submitApplication(ClientArguments arguments) throws Exception {
@@ -503,8 +509,7 @@ public class Client implements Closeable {
                 return false;
             }
         }
-
-        return srcHost.equals(dstHost) && srcUri.getPort() == dstUri.getPort();
+        return StringUtils.equals(srcHost, dstHost) && srcUri.getPort() == dstUri.getPort();
     }
 
     private byte[] serializeCreds(Credentials creds) throws IOException {
