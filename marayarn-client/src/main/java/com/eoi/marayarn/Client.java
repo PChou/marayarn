@@ -256,10 +256,12 @@ public class Client implements Closeable {
         int memoryCapability = applicationResponse.getMaximumResourceCapability().getMemory();
         int coreCapability = applicationResponse.getMaximumResourceCapability().getVirtualCores();
         if (AM_MIN_MEMEORY + arguments.getInstances() * arguments.getMemory() > memoryCapability) { // 256 for AM
-            throw new ResourceLimitException();
+            throw new ResourceLimitException(ResourceLimitException.ResourceLimitType.MEMORY, memoryCapability,
+                    AM_MIN_MEMEORY + arguments.getInstances() * arguments.getMemory());
         }
         if (AM_MIN_CORE + arguments.getInstances() * arguments.getCpu() > coreCapability) {
-            throw new ResourceLimitException();
+            throw new ResourceLimitException(ResourceLimitException.ResourceLimitType.CORE, coreCapability,
+                    AM_MIN_CORE + arguments.getInstances() * arguments.getCpu());
         }
     }
 
