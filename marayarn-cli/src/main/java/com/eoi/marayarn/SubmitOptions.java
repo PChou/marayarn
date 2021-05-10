@@ -19,7 +19,7 @@ public class SubmitOptions extends CliOptions {
         if (fragmentMatcher.find()) {
             clearFragment = fragmentMatcher.replaceFirst("");
         }
-        return clearFragment.endsWith(".tar.gz") || clearFragment.endsWith(".zip");
+        return clearFragment.endsWith(".tar.gz") || clearFragment.endsWith(".tgz") || clearFragment.endsWith(".zip");
     }
 
     static Options buildOptions() {

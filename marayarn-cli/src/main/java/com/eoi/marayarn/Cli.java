@@ -87,7 +87,7 @@ public class Cli {
         try(Client client = new Client()) {
             ApplicationReport report = client.launch(clientArguments);
             logger.info("application id: {}", report.getApplicationId());
-            logger.info("tracking url: {}", report.getOriginalTrackingUrl());
+            logger.info("tracking url: {}", report.getTrackingUrl());
         }
     }
 
