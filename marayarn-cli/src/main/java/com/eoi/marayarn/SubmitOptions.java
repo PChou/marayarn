@@ -11,16 +11,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class SubmitOptions extends CliOptions {
-    static final Pattern fragment = Pattern.compile("#.*$");
-
-    static boolean isArchive(String name) {
-        Matcher fragmentMatcher = fragment.matcher(name);
-        String clearFragment = name;
-        if (fragmentMatcher.find()) {
-            clearFragment = fragmentMatcher.replaceFirst("");
-        }
-        return clearFragment.endsWith(".tar.gz") || clearFragment.endsWith(".tgz") || clearFragment.endsWith(".zip");
-    }
 
     static Options buildOptions() {
         Options options = new Options();
@@ -119,17 +109,48 @@ public class SubmitOptions extends CliOptions {
         if (files != null) {
             List<Artifact> artifacts = new ArrayList<>();
             for (String file : files) {
-                Artifact artifact;
-                if (isArchive(file)) {
-                    artifact = new Artifact().setLocalPath(file).setType(LocalResourceType.ARCHIVE);
-                } else {
-                    artifact = new Artifact().setLocalPath(file).setType(LocalResourceType.FILE);
+                Artifact artifact = fromString(file);
+                if (artifact != null) {
+                    artifacts.add(artifact);
                 }
-                artifacts.add(artifact);
             }
             clientArguments.setArtifacts(artifacts);
         }
         return clientArguments;
+    }
+
+    private static final Pattern pattern = Pattern.compile("(?<path>[^#@]+)(?<ct>#[^@]+)?(?<hp>@.+)?$");
+
+    /**
+     * extract Artifact info from file string
+     * schema://path[#compress_target][@hadoop_path]
+     * @param file
+     * @return
+     */
+    public static Artifact fromString(String file) {
+        Matcher matcher = pattern.matcher(file);
+        if (matcher.find()) {
+            String path = matcher.group("path");
+            String ct = matcher.group("ct");
+            String hp = matcher.group("hp");
+            Artifact artifact = new Artifact();
+            if (ct != null) {
+                artifact.setType(LocalResourceType.ARCHIVE);
+                artifact.setLocalPath(path + ct);
+            } else {
+                if (path.endsWith(".tar.gz") || path.endsWith(".tgz") || path.endsWith(".zip")) {
+                    artifact.setType(LocalResourceType.ARCHIVE);
+                } else {
+                    artifact.setType(LocalResourceType.FILE);
+                }
+                artifact.setLocalPath(path);
+            }
+            if (hp != null) {
+                artifact.setHadoopConfDir(hp.substring(1));
+            }
+            return artifact;
+        }
+        return null;
     }
 
     static void printHelp() {

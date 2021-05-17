@@ -3,6 +3,8 @@ package com.eoi.marayarn;
 import org.apache.hadoop.yarn.api.records.LocalResourceType;
 import org.apache.hadoop.yarn.api.records.LocalResourceVisibility;
 
+import java.util.Objects;
+
 public class Artifact {
     private String localPath;
     private LocalResourceType type;
@@ -44,5 +46,21 @@ public class Artifact {
     public Artifact setHadoopConfDir(String hadoopConfDir) {
         this.hadoopConfDir = hadoopConfDir;
         return this;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Artifact artifact = (Artifact) o;
+        return Objects.equals(localPath, artifact.localPath) &&
+                type == artifact.type &&
+                visibility == artifact.visibility &&
+                Objects.equals(hadoopConfDir, artifact.hadoopConfDir);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(localPath, type, visibility, hadoopConfDir);
     }
 }
