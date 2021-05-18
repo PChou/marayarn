@@ -7,7 +7,7 @@ import java.util.Objects;
 
 public class Artifact {
     private String localPath;
-    private LocalResourceType type;
+    private LocalResourceType type = LocalResourceType.FILE;
     private LocalResourceVisibility visibility = LocalResourceVisibility.APPLICATION;
     // since we need support file in another hdfs for localPath, so need to known the hadoopConfDir
     private String hadoopConfDir;

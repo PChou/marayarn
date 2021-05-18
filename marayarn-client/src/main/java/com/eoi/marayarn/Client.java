@@ -125,7 +125,7 @@ public class Client implements Closeable {
 
     private YarnConfiguration initConfigurationByPath(String specifiedHadoopConfPath) {
         YarnConfiguration configuration = new YarnConfiguration();
-        String[] possibleHadoopConfPaths = new String[3];
+        String[] possibleHadoopConfPaths = new String[4];
         if (specifiedHadoopConfPath != null && !specifiedHadoopConfPath.isEmpty()) {
             possibleHadoopConfPaths[0] = specifiedHadoopConfPath;
         } else {
@@ -136,6 +136,7 @@ public class Client implements Closeable {
             } else if (hadoopHome != null && !hadoopHome.isEmpty()) {
                 possibleHadoopConfPaths[1] = hadoopHome + "/conf";
                 possibleHadoopConfPaths[2] = hadoopHome + "/etc/conf";
+                possibleHadoopConfPaths[3] = hadoopHome + "/etc";
             }
         }
         for (String possibleHadoopConfPath: possibleHadoopConfPaths) {
@@ -475,7 +476,7 @@ public class Client implements Closeable {
         if (!compareFs(srcFs, destFs)) {
             destPath = new Path(destDir, srcPath.getName());
             logger.info("Uploading resource {} -> {}", srcPath, destPath);
-            FileUtil.copy(srcFs, srcPath, destFs, destPath, false, this.yarnConfiguration);
+            FileUtil.copy(srcFs, srcPath, destFs, destPath, false, new YarnConfiguration());
             destFs.setPermission(destPath, new FsPermission(APP_FILE_PERMISSION));
         } else {
             logger.info("Source and destination file systems are the same. Not copying {}", srcPath);
