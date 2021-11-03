@@ -249,20 +249,18 @@ public class Client implements Closeable {
         }
     }
 
-    // TODO: the following configuration will affect the final resource allocation
-    //   yarn.scheduler.minimum-allocation-mb, yarn.scheduler.increment-allocation-mb
-    //   yarn.scheduler.minimum-allocation-vcores, yarn.scheduler.increment-allocation-vcores
     private void verifyAMResource(GetNewApplicationResponse applicationResponse, ClientArguments arguments)
             throws ResourceLimitException{
+        // getMaximumResourceCapability returns the maximum core and memory that allows allocating by each container
         int memoryCapability = applicationResponse.getMaximumResourceCapability().getMemory();
         int coreCapability = applicationResponse.getMaximumResourceCapability().getVirtualCores();
-        if (AM_MIN_MEMEORY + arguments.getInstances() * arguments.getMemory() > memoryCapability) { // 256 for AM
+        if (arguments.getMemory() > memoryCapability) {
             throw new ResourceLimitException(ResourceLimitException.ResourceLimitType.MEMORY, memoryCapability,
-                    AM_MIN_MEMEORY + arguments.getInstances() * arguments.getMemory());
+                    arguments.getMemory());
         }
-        if (AM_MIN_CORE + arguments.getInstances() * arguments.getCpu() > coreCapability) {
+        if (arguments.getCpu() > coreCapability) {
             throw new ResourceLimitException(ResourceLimitException.ResourceLimitType.CORE, coreCapability,
-                    AM_MIN_CORE + arguments.getInstances() * arguments.getCpu());
+                    arguments.getCpu());
         }
     }
 

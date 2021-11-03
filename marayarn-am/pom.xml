@@ -7,11 +7,11 @@
   <parent>
     <groupId>com.eoi.marayarn</groupId>
     <artifactId>marayarn</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.0.1</version>
   </parent>
 
   <artifactId>marayarn-am</artifactId>
-  <version>1.0-SNAPSHOT</version>
+  <version>1.0.1</version>
 
   <name>marayarn-am</name>
 
@@ -28,7 +28,7 @@
     <dependency>
       <groupId>com.eoi.marayarn</groupId>
       <artifactId>marayarn-common</artifactId>
-      <version>1.0-SNAPSHOT</version>
+      <version>1.0.1</version>
     </dependency>
     <dependency>
       <groupId>com.google.protobuf</groupId>
