@@ -5,9 +5,10 @@ import com.eoi.marayarn.http.Handler;
 import com.eoi.marayarn.http.HandlerErrorException;
 import com.eoi.marayarn.http.JsonUtil;
 import com.eoi.marayarn.http.ProcessResult;
-import com.eoi.marayarn.prometheus.protobuf.Types;
 import com.fasterxml.jackson.core.type.TypeReference;
 import io.netty.handler.codec.http.HttpMethod;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.StringReader;
@@ -16,7 +17,7 @@ import java.util.*;
 
 public class MonitoringHandler implements Handler {
 
-    public static final String METRIC_NAME_KEY = "__name__";
+    private static final Logger logger = LoggerFactory.getLogger(MonitoringHandler.class);
 
     private MaraApplicationMaster applicationMaster;
     public MonitoringHandler(MaraApplicationMaster applicationMaster) {
@@ -52,40 +53,38 @@ public class MonitoringHandler implements Handler {
                     lastType = ((Map)parsed.get("index")).get("_type").toString();
                 } else {
                     if (lastType != null && lastType.equals("logstash_stats")) {
-                        long timestamp = System.currentTimeMillis();
                         LogstashStatsMetricsPicker picker = new LogstashStatsMetricsPicker(parsed);
                         picker.visit();
-                        List<Types.TimeSeries> ts = toProm(picker.metricValues, picker.metricTypes, timestamp,
-                                this.applicationMaster.getJobId());
-                        applicationMaster.writeMetricsToInfluxdb(ts);
+                        toProm(picker.uuid, picker.metricValues, picker.metricTypes, this.applicationMaster.getJobId());
                     }
                 }
                 line = bufferedReader.readLine();
             }
         } catch (Exception e) {
+            logger.warn("Failed to parse logstash metrics into prometheus metrics", e);
             return ProcessResult.jsonProcessResult(BulkAck.FAILED(1));
         }
         return ProcessResult.jsonProcessResult(BulkAck.OK(1));
     }
 
-    private List<Types.TimeSeries> toProm(Map<String, Object> values, Map<String, String> types, long timestamp, String yarnId) {
-        List<Types.TimeSeries> timeSeries = new ArrayList<>();
+    private void toProm(String uuid, Map<String, Object> values, Map<String, String> types, String yarnId) {
         for (String metricKey: values.keySet()) {
             Object value = values.get(metricKey);
-            // String type = types.get(metricKey);
+            String type = types.get(metricKey);
             if (value == null) {
                 continue;
             }
-            List<Types.Label> commonLabel = new ArrayList<>(8);
-            commonLabel.add(Types.Label.newBuilder().setName("job").setValue(yarnId).build());
-            commonLabel.add(Types.Label.newBuilder().setName(METRIC_NAME_KEY).setValue("logstash" + metricKey).build());
-            Types.TimeSeries ts = new Types.TimeSeries();
-            Types.Sample.Builder builder =  Types.Sample.newBuilder().setTimestamp(timestamp);
-            builder.setValue(Double.parseDouble(value.toString()));
-            ts.setSamples(Collections.singletonList(builder.build()));
-            ts.setLabels(commonLabel);
-            timeSeries.add(ts);
+            Map<String, String> labels = new HashMap<>();
+            labels.put("application", yarnId);
+            labels.put("uuid", uuid);
+            if ("gauge".equals(type)) {
+                applicationMaster.prometheusMetricReporter.putGauge("logstash" + metricKey,
+                        labels, Double.parseDouble(value.toString()));
+            } else if ("counter".equals(type)) {
+                applicationMaster.prometheusMetricReporter.putFullCounter("logstash" + metricKey,
+                        labels, Double.parseDouble(value.toString()));
+            }
         }
-        return timeSeries;
+        applicationMaster.prometheusMetricReporter.flush();
     }
 }

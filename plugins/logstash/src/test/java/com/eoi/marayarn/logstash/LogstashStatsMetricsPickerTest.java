@@ -15,5 +15,6 @@ public class LogstashStatsMetricsPickerTest {
         Assert.assertFalse(logstashStatsMetricsPicker.metricValues.containsKey(".reloads.failures"));
         Assert.assertEquals(14, logstashStatsMetricsPicker.metricValues.size());
         Assert.assertEquals(14, logstashStatsMetricsPicker.metricTypes.size());
+        Assert.assertEquals("45e35ccc-962c-4613-9e9e-dad635085a9d", logstashStatsMetricsPicker.uuid);
     }
 }

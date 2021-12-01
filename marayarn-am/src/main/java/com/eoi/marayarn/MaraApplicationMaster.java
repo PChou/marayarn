@@ -2,8 +2,7 @@ package com.eoi.marayarn;
 
 import com.eoi.marayarn.http.Handler;
 import com.eoi.marayarn.http.HandlerFactory;
-import com.eoi.marayarn.prometheus.protobuf.Types;
-import com.eoi.marayarn.prometheus.util.RemoteWriter;
+import com.eoi.marayarn.prometheus.PrometheusMetricReporter;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -26,16 +25,14 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.URI;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 import static com.eoi.marayarn.Constants.AM_ENV_COMMANDLINE;
 
 public class MaraApplicationMaster {
-    // http://xxx.xxx.xxx.xxx:8086/api/v1/prom/write?db=xxx
-    public static final String INFLUXDB_URL_ENV_KEY = "INFLUXDB_URL";
+    // xxx.xxx.xxx.xxx:9091
+    public static final String PROM_PGW_ENDPOINT = "PROMETHEUS_PUSHGATEWAY_ENDPOINT";
     // http://xxx.xxx.xxx.xxx:3000
     public static final String GRAFANA_URL_ENV_KEY = "GRAFANA_BASE_URL";
     public static final String GRAFANA_DASHBOARD_ID_ENV_KEY = "GRAFANA_DASHBOARD_ID";
@@ -59,17 +56,9 @@ public class MaraApplicationMaster {
 
     private List<ApplicationMasterPlugin> applicationPlugins = new ArrayList<>();
 
-    private URI influxDbRemoteWriteEndpoint = null;
+    public PrometheusMetricReporter prometheusMetricReporter;
 
     public MaraApplicationMaster() {
-        String remoteWriteEndpoint = System.getenv(INFLUXDB_URL_ENV_KEY);
-        if (remoteWriteEndpoint != null && !remoteWriteEndpoint.isEmpty()) {
-            try {
-                influxDbRemoteWriteEndpoint = new URL(remoteWriteEndpoint).toURI();
-            } catch (Exception e) {
-                logger.warn("Failed to init influxDbRemoteWriteEndpoint", e);
-            }
-        }
     }
 
     public String getJobId() {
@@ -278,10 +267,6 @@ public class MaraApplicationMaster {
         return applicationPlugins;
     }
 
-    public void writeMetricsToInfluxdb(List<Types.TimeSeries> timeSeriesList) throws Exception {
-        RemoteWriter.writeTimeSeries(timeSeriesList, influxDbRemoteWriteEndpoint);
-    }
-
     public static void main(String[] args) throws Exception {
         logger.info("Starting Application Master");
         Options options = setupOptions();
@@ -305,6 +290,17 @@ public class MaraApplicationMaster {
         logger.info("Initializing and registering Application Master");
         applicationMaster.initializeAM(arguments);
         applicationMaster.register();
+        String pushGateway = System.getenv(PROM_PGW_ENDPOINT);
+        if (pushGateway != null && !pushGateway.isEmpty()) {
+            logger.info("Starting PrometheusMetricReporter");
+            try {
+                applicationMaster.prometheusMetricReporter = new PrometheusMetricReporter(pushGateway,
+                        "yarn_" + applicationMaster.applicationAttemptId.getApplicationId().toString());
+                applicationMaster.prometheusMetricReporter.start();
+            } catch (Exception e) {
+                logger.error("Failed to init PrometheusMetricReporter", e);
+            }
+        }
         logger.info("Begin to allocate resources");
         applicationMaster.allocator.allocateResources();
         logger.info("Starting reporter thread");
@@ -325,6 +321,9 @@ public class MaraApplicationMaster {
                     applicationMaster.finished = true;
                 }
             }
+        }
+        if (applicationMaster.prometheusMetricReporter != null) {
+            applicationMaster.prometheusMetricReporter.stop();
         }
         for (ApplicationMasterPlugin plugin: applicationMaster.applicationPlugins) {
             plugin.stop();

@@ -10,12 +10,20 @@ import java.io.InputStream;
 import java.io.StringReader;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.BiConsumer;
 
 public class LogstashStatsMetricsPicker extends JsonVisitor {
     private static final Logger logger = LoggerFactory.getLogger(LogstashStatsMetricsPicker.class);
 
+    private static Map<String, BiConsumer<LogstashStatsMetricsPicker, Object>> valuePicker = new HashMap<>();
+
+    static {
+        valuePicker.put(".logstash.uuid", (picker, v) -> picker.uuid = v.toString());
+    }
+
     public Map<String, Object> metricValues = new HashMap<>();
     public Map<String, String> metricTypes = new HashMap<>();
+    public String uuid;
 
     public LogstashStatsMetricsPicker(String json) {
         super(json);
@@ -46,6 +54,15 @@ public class LogstashStatsMetricsPicker extends JsonVisitor {
 
     @Override
     protected boolean internalVisit(String path, Object value) {
+
+        for (String valueKey: valuePicker.keySet()) {
+            if (!valueKey.startsWith(path)) continue;
+            if (valueKey.equals(path)) {
+                valuePicker.get(valueKey).accept(this, value);
+            }
+            return true;
+        }
+
         for (String metricKey: metricTypes.keySet()) {
             // metricKey不包含path开头的话，看下一个
             if (!metricKey.startsWith(path)) continue;
