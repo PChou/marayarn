@@ -8,15 +8,13 @@ import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.*;
 
 import java.io.File;
 import java.util.HashMap;
 import java.util.function.Predicate;
 
+@Ignore
 public class IntergrationTest {
 
     public final static String AM_JAR_NAME = "marayarn-am-1.0-SNAPSHOT-jar-with-dependencies.jar";
