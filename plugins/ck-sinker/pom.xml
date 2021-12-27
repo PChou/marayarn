@@ -6,12 +6,12 @@
   <parent>
     <groupId>com.eoi.marayarn</groupId>
     <artifactId>marayarn</artifactId>
-    <version>1.1.0</version>
+    <version>1.2.0</version>
     <relativePath>../../pom.xml</relativePath>
   </parent>
 
   <artifactId>plugin-ck-sinker</artifactId>
-  <version>1.1.0</version>
+  <version>1.2.0</version>
 
   <name>ck-sinker</name>
 
@@ -26,7 +26,7 @@
     <dependency>
       <groupId>com.eoi.marayarn</groupId>
       <artifactId>marayarn-am</artifactId>
-      <version>1.1.0</version>
+      <version>1.2.0</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
