@@ -8,7 +8,6 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.*;
-import org.apache.commons.httpclient.util.ExceptionUtil;
 import org.apache.commons.lang.exception.ExceptionUtils;
 
 import java.util.ArrayList;

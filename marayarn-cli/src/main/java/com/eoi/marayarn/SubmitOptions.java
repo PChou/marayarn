@@ -44,6 +44,11 @@ public class SubmitOptions extends CliOptions {
                 .desc("User to impersonate when submitting the application. This argument does not work with --principal / --keytab").build();
         Option retry = new OptionBuilder("retry").hasArg(true)
                 .desc("Retry threshold for failed containers").build();
+        Option javaOptions = new OptionBuilder("opt").hasArgs()
+                .desc("Pass java options to ApplicationMaster").build();
+        Option renewer = new OptionBuilder("renewer").hasArg(true).argName("renewer")
+                .desc("Specify delegation token renewer for kerberos enabled. " +
+                        "Default value is yarn, sometimes you may change it equals to yarn.resourcemanager.principal").build();
         options.addOption(name);
         options.addOption(queue);
         options.addOption(cpu);
@@ -59,6 +64,8 @@ public class SubmitOptions extends CliOptions {
         options.addOption(constraints);
         options.addOption(proxyUser);
         options.addOption(retry);
+        options.addOption(javaOptions);
+        options.addOption(renewer);
         return options;
     }
 
@@ -85,6 +92,7 @@ public class SubmitOptions extends CliOptions {
         clientArguments.setConstraints(commandLine.getOptionValue("constraints", null));
         clientArguments.setUser(commandLine.getOptionValue("user", null));
         clientArguments.setRetryThreshold(Integer.parseInt(commandLine.getOptionValue("retry", "1000")));
+        clientArguments.setDelegationTokenRenewer(commandLine.getOptionValue("renewer", "yarn"));
         // env for executor
         Properties envsProps = commandLine.getOptionProperties("E");
         Map<String, String> executorEnvs = new HashMap<>();
@@ -115,6 +123,10 @@ public class SubmitOptions extends CliOptions {
                 }
             }
             clientArguments.setArtifacts(artifacts);
+        }
+        String[] javaOptions = commandLine.getOptionValues("opt");
+        if (javaOptions != null) {
+            clientArguments.setJavaOptions(Arrays.asList(javaOptions));
         }
         return clientArguments;
     }

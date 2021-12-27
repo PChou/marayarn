@@ -370,6 +370,9 @@ public class Client implements Closeable {
         commands.add("-Xmx" + AM_MIN_MEMEORY + "m");
         Path tmpDir = new Path(ApplicationConstants.Environment.PWD.$$(), YarnConfiguration.DEFAULT_CONTAINER_TEMP_DIR);
         commands.add("-Djava.io.tmpdir=" + tmpDir);
+        if (arguments.getJavaOptions() != null && !arguments.getJavaOptions().isEmpty()) {
+            commands.addAll(arguments.getJavaOptions());
+        }
         // TODO support custom java options
         commands.add(arguments.getApplicationMasterClass());// main class
         commands.add("--executors");
@@ -420,7 +423,12 @@ public class Client implements Closeable {
             logger.info("Preparing for kerberos principal {}({}) and set hdfs delegation token", arguments.getPrincipal(), arguments.getKeytab());
             Credentials creds = UserGroupInformation.getCurrentUser().getCredentials();
             FileSystem defaultFS = FileSystem.get(yarnConfiguration);
-            defaultFS.addDelegationTokens("yarn", creds);
+            String renewer = arguments.getDelegationTokenRenewer();
+            if (renewer == null || renewer.isEmpty()) {
+                defaultFS.addDelegationTokens("yarn", creds);
+            } else {
+                defaultFS.addDelegationTokens(renewer, creds);
+            }
             clc.setTokens(ByteBuffer.wrap(serializeCreds(creds)));
         }
         logger.info("===============================================================================");

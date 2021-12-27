@@ -126,6 +126,17 @@ public class ClientArguments {
      */
     private Integer retryThreshold;
 
+    /**
+     * 设置启动AM时的Java Options
+     */
+    private List<String> javaOptions;
+
+    /**
+     * 设置delegation token的renewer，默认是yarn，但有的时候需要改成跟yarn.resourcemanager.principal一样，
+     * 否则rn向nn申请delegation token的时候会报错 xxx tries to renew a token (...) with non-matching renewer xxx
+     */
+    private String delegationTokenRenewer;
+
     public String getApplicationId() {
         return applicationId;
     }
@@ -276,6 +287,22 @@ public class ClientArguments {
 
     public void setRetryThreshold(Integer retryThreshold) {
         this.retryThreshold = retryThreshold;
+    }
+
+    public List<String> getJavaOptions() {
+        return javaOptions;
+    }
+
+    public void setJavaOptions(List<String> javaOptions) {
+        this.javaOptions = javaOptions;
+    }
+
+    public String getDelegationTokenRenewer() {
+        return delegationTokenRenewer;
+    }
+
+    public void setDelegationTokenRenewer(String delegationTokenRenewer) {
+        this.delegationTokenRenewer = delegationTokenRenewer;
     }
 
     private void checkIfNullOrEmpty(String t, String literal) throws InvalidClientArgumentException {

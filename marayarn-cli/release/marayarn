@@ -1,6 +1,4 @@
-#!/bin/sh
-
-DIR=$(cd "$(dirname "$0")" && pwd)
+#!/bin/bash
 
 if [ -x "$JAVA_HOME/bin/java" ]; then
     JAVA="$JAVA_HOME/bin/java"
@@ -8,7 +6,39 @@ else
     echo "JAVA_HOME is not set and use default java command."
     JAVA="java"
 fi
+#
+constructClassPath() {
+    local CLI_CLASSPATH
 
-ProgramJar=${DIR}/marayarn-cli-*.jar
+    while read -d '' -r jarfile ; do
+        if [[ "CLI_CLASSPATH" == "" ]]; then
+            CLI_CLASSPATH="$jarfile";
+        else
+            CLI_CLASSPATH="$CLI_CLASSPATH":"$jarfile"
+        fi
+    done < <(find "$CLI_LIB_DIR" ! -type d -name '*.jar' -print0 | sort -z)
+    echo "$CLI_CLASSPATH"
+}
 
-"$JAVA" -jar $JAX_JAVA_OPTS ${ProgramJar} "$@"
+target="$0"
+# For the case, the executable has been directly symlinked, figure out
+# the correct bin path by following its symlink up to an upper bound.
+# Note: we can't use the readlink utility here if we want to be POSIX
+# compatible.
+iteration=0
+while [ -L "$target" ]; do
+    if [ "$iteration" -gt 100 ]; then
+        echo "Cannot resolve path: You have a cyclic symlink in $target."
+        break
+    fi
+    ls=`ls -ld -- "$target"`
+    target=`expr "$ls" : '.* -> \(.*\)$'`
+    iteration=$((iteration + 1))
+done
+
+CLI_HOME=`dirname "$target"`
+CLI_LIB_DIR=$CLI_HOME/lib
+LIB_CLASSPATH=`constructClassPath`
+CLI_MAIN_JAR=`find $CLI_HOME -name "marayarn-cli-*.jar"`
+
+"$JAVA" $JAVA_OPTS -classpath $CLI_MAIN_JAR:$LIB_CLASSPATH com.eoi.marayarn.Cli "$@"
