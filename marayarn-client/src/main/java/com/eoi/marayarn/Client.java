@@ -1,6 +1,7 @@
 package com.eoi.marayarn;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.security.Credentials;
@@ -477,7 +478,12 @@ public class Client implements Closeable {
         // FileSystem destFs = destDir.getFileSystem(this.yarnConfiguration);
         // FileSystem srcFs = srcPath.getFileSystem(this.yarnConfiguration);
         FileSystem destFs = FileSystem.get(new URI(destDir.toString()), this.yarnConfiguration);
-        FileSystem srcFs = FileSystem.get(new URI(srcPath.toString()), srcConfiguration == null ? this.yarnConfiguration : srcConfiguration);
+        FileSystem srcFs;
+        if (srcPath.toUri().getScheme() == null) {
+            srcFs = FileSystem.get(new URI(srcPath.toString()), new Configuration());
+        } else {
+            srcFs = FileSystem.get(new URI(srcPath.toString()), srcConfiguration == null ? this.yarnConfiguration : srcConfiguration);
+        }
         Path destPath = srcPath;
         if (!compareFs(srcFs, destFs)) {
             destPath = new Path(destDir, srcPath.getName());
