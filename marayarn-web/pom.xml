@@ -5,11 +5,11 @@
     <parent>
         <groupId>com.eoi.marayarn</groupId>
         <artifactId>marayarn</artifactId>
-        <version>1.2.0</version>
+        <version>1.2.1</version>
     </parent>
 
     <artifactId>web</artifactId>
-    <version>1.2.0</version>
+    <version>1.2.1</version>
 
     <name>marayarn-web</name>
     <description>marayarn-web</description>
@@ -27,7 +27,7 @@
         <dependency>
             <groupId>com.eoi.marayarn</groupId>
             <artifactId>marayarn-client</artifactId>
-            <version>1.2.0</version>
+            <version>1.2.1</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.slf4j</groupId>
