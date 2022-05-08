@@ -107,6 +107,7 @@ public class Cli {
             logger.info("application master rpc port: {}", report.getRpcPort());
             logger.info("application id: {}", report.getApplicationId());
             logger.info("tracking url: {}", report.getOriginalTrackingUrl());
+            logger.info("tracking url(proxy): {}", report.getTrackingUrl());
             logger.info("application state: {}", report.getYarnApplicationState());
             logger.info("final status: {}", report.getFinalApplicationStatus());
             logger.info("diagnostics: {}", report.getDiagnostics());
