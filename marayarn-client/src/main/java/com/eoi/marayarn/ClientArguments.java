@@ -29,6 +29,10 @@ public class ClientArguments {
      */
     private String applicationName;
     /**
+     * 设置ApplicationMaster的memory, 单位MB, 默认为1024
+     */
+    private int amMemory;
+    /**
      * ApplicationMasterClass的主类，内部指定为com.eoi.marayarn.MaraApplicationMaster
      * 见src/main/java/com/eoi/marayarn/MaraApplicationMaster.java
      */
@@ -182,6 +186,14 @@ public class ClientArguments {
 
     public void setApplicationName(String applicationName) {
         this.applicationName = applicationName;
+    }
+
+    public int getAmMemory() {
+        return amMemory;
+    }
+
+    public void setAmMemory(int amMemory) {
+        this.amMemory = amMemory;
     }
 
     public String getQueue() {

@@ -197,7 +197,11 @@ public class Client implements Closeable {
         submissionContext.setMaxAppAttempts(1);
         submissionContext.setQueue(arguments.getQueue());
         Resource capability = Records.newRecord(Resource.class);
-        capability.setMemory(AM_MIN_MEMEORY);
+        if (arguments.getAmMemory() <= 0) {
+            capability.setMemory(AM_MIN_MEMEORY);
+        } else {
+            capability.setMemory(arguments.getAmMemory());
+        }
         capability.setVirtualCores(AM_MIN_CORE);
         submissionContext.setResource(capability);
         logger.info("Submitting application {}", newAppResponse.getApplicationId());

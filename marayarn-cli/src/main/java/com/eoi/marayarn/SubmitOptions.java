@@ -22,6 +22,8 @@ public class SubmitOptions extends CliOptions {
                 .desc("The vcpu core count of each task (not include am)").build();
         Option memory = new OptionBuilder("memory").hasArg(true).argName("int")
                 .desc("The memory in MB of each task (not include am)").build();
+        Option ammemory = new OptionBuilder("ammemory").hasArg(true).argName("int")
+                .desc("The memory in MB of application master").build();
         Option instance = new OptionBuilder("instance").hasArg(true).argName("int")
                 .desc("The number of instance of the application (not include am)").build();
         Option files = new OptionBuilder("file").hasArgs().argName("file://<LocalPath>")
@@ -53,6 +55,7 @@ public class SubmitOptions extends CliOptions {
         options.addOption(queue);
         options.addOption(cpu);
         options.addOption(memory);
+        options.addOption(ammemory);
         options.addOption(instance);
         options.addOption(files);
         options.addOption(command);
@@ -86,6 +89,7 @@ public class SubmitOptions extends CliOptions {
         clientArguments.setQueue(commandLine.getOptionValue("queue"));
         clientArguments.setCpu(Integer.parseInt(commandLine.getOptionValue("cpu", "1")));
         clientArguments.setMemory(Integer.parseInt(commandLine.getOptionValue("memory", "512")));
+        clientArguments.setAmMemory(Integer.parseInt(commandLine.getOptionValue("ammemory", "1024")));
         clientArguments.setInstances(Integer.parseInt(commandLine.getOptionValue("instance", "1")));
         clientArguments.setPrincipal(commandLine.getOptionValue("principal", null));
         clientArguments.setKeytab(commandLine.getOptionValue("keytab", null));
