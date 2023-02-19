@@ -2,6 +2,7 @@ package com.eoi.marayarn.http;
 
 import io.netty.handler.codec.http.HttpMethod;
 
+import java.util.HashMap;
 import java.util.Map;
 
 public interface Handler {
@@ -23,4 +24,17 @@ public interface Handler {
      */
     ProcessResult process(Map<String, String> urlParams, HttpMethod method, byte[] body)
             throws HandlerErrorException;
+
+    static Map<String, String> parseQueryString(String uri) {
+        Map<String, String> queryString = new HashMap<>();
+        String qs = uri.substring(uri.indexOf('?') + 1);
+        String[] parts = qs.split("&");
+        for (String part : parts) {
+            String[] kv = part.split("=");
+            if (kv.length == 2) {
+                queryString.put(kv[0], kv[1]);
+            }
+        }
+        return queryString;
+    }
 }

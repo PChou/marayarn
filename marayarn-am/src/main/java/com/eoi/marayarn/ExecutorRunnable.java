@@ -99,7 +99,7 @@ public class ExecutorRunnable implements Runnable {
                 if (hook == null) {
                     continue;
                 }
-                hook.hookPrepareExecutorEnvironments(executorEnvs);
+                hook.hookPrepareExecutorEnvironments(executorEnvs, container.getId().toString());
             }
         }
         return executorEnvs;

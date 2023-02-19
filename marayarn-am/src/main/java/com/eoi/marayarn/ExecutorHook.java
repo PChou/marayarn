@@ -11,5 +11,5 @@ public interface ExecutorHook {
      * if no need to change, just return
      * @param envs
      */
-    void hookPrepareExecutorEnvironments(Map<String, String> envs);
+    void hookPrepareExecutorEnvironments(Map<String, String> envs, String containerId);
 }

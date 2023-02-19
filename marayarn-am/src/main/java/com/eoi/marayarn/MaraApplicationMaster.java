@@ -2,7 +2,6 @@ package com.eoi.marayarn;
 
 import com.eoi.marayarn.http.Handler;
 import com.eoi.marayarn.http.HandlerFactory;
-import com.eoi.marayarn.prometheus.PrometheusMetricReporter;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -31,6 +30,8 @@ import java.util.*;
 import static com.eoi.marayarn.Constants.AM_ENV_COMMANDLINE;
 
 public class MaraApplicationMaster {
+    // metric repoter class name. default is com.eoi.marayarn.prometheus.PrometheusPGWReporter
+    public static final String REPORTER_CLASS = "REPORTER_CLASS";
     // xxx.xxx.xxx.xxx:9091
     public static final String PROM_PGW_ENDPOINT = "PROMETHEUS_PUSHGATEWAY_ENDPOINT";
     // http://xxx.xxx.xxx.xxx:3000
@@ -56,7 +57,7 @@ public class MaraApplicationMaster {
 
     private List<ApplicationMasterPlugin> applicationPlugins = new ArrayList<>();
 
-    public PrometheusMetricReporter prometheusMetricReporter;
+    public MetricsReporter metricsReporter;
 
     public MaraApplicationMaster() {
     }
@@ -80,8 +81,9 @@ public class MaraApplicationMaster {
     }
 
     private void initializePipeline(SocketChannel channel) {
-        if ( channel == null )
+        if (channel == null) {
             return;
+        }
         List<Handler> pluginHandlers = new ArrayList<>();
         for (ApplicationMasterPlugin plugin: applicationPlugins) {
             HandlerFactory handlerFactory = plugin.handlerFactory();
@@ -294,13 +296,16 @@ public class MaraApplicationMaster {
         applicationMaster.register();
         String pushGateway = System.getenv(PROM_PGW_ENDPOINT);
         if (pushGateway != null && !pushGateway.isEmpty()) {
-            logger.info("Starting PrometheusMetricReporter");
             try {
-                applicationMaster.prometheusMetricReporter = new PrometheusMetricReporter(pushGateway,
-                        "yarn_" + applicationMaster.applicationAttemptId.getApplicationId().toString());
-                applicationMaster.prometheusMetricReporter.start();
+                String reporterClass = Optional.ofNullable(System.getenv(REPORTER_CLASS))
+                        .orElse("com.eoi.marayarn.prometheus.PrometheusPGWReporter");
+                applicationMaster.metricsReporter = (MetricsReporter) Class.forName(reporterClass).getDeclaredConstructor().newInstance();
+                applicationMaster.metricsReporter.setEndpoint(pushGateway);
+                applicationMaster.metricsReporter.setJobName("yarn_" + applicationMaster.applicationAttemptId.getApplicationId().toString());
+                applicationMaster.metricsReporter.start();
+                logger.info("Start MetricReporter using {}, endpoint {}", reporterClass, pushGateway);
             } catch (Exception e) {
-                logger.error("Failed to init PrometheusMetricReporter", e);
+                logger.error("Failed to init MetricReporter", e);
             }
         }
         logger.info("Begin to allocate resources");
@@ -324,8 +329,8 @@ public class MaraApplicationMaster {
                 }
             }
         }
-        if (applicationMaster.prometheusMetricReporter != null) {
-            applicationMaster.prometheusMetricReporter.stop();
+        if (applicationMaster.metricsReporter != null) {
+            applicationMaster.metricsReporter.stop();
         }
         for (ApplicationMasterPlugin plugin: applicationMaster.applicationPlugins) {
             plugin.stop();

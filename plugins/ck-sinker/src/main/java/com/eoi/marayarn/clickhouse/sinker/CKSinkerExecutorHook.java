@@ -15,7 +15,7 @@ public class CKSinkerExecutorHook implements ExecutorHook {
     }
 
     @Override
-    public void hookPrepareExecutorEnvironments(Map<String, String> envs) {
-        envs.put(CALL_BACK_ENDPOINT, this.applicationMaster.trackingUrl + "/cks/prom/write");
+    public void hookPrepareExecutorEnvironments(Map<String, String> envs, String containerId) {
+        envs.put(CALL_BACK_ENDPOINT, this.applicationMaster.trackingUrl + "/cks/prom/write?containerId=" + containerId);
     }
 }

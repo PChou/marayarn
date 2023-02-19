@@ -1,20 +1,19 @@
 package com.eoi.marayarn.prometheus;
 
+import com.eoi.marayarn.MetricsReporter;
 import io.prometheus.client.Collector;
 import io.prometheus.client.CollectorRegistry;
 import io.prometheus.client.Counter;
 import io.prometheus.client.Gauge;
-import io.prometheus.client.exporter.PushGateway;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
-public class PrometheusMetricReporter {
+public abstract class PrometheusMetricReporter implements MetricsReporter {
 
     protected static final Logger log = LoggerFactory.getLogger(PrometheusMetricReporter.class);
 
@@ -30,52 +29,39 @@ public class PrometheusMetricReporter {
         return UNALLOWED_CHAR_PATTERN.matcher(input).replaceAll("_");
     }
 
-    private final String endpoint;
-    private final String jobName;
-
-    private PushGateway pushGateway;
+    private String endpoint;
+    private String jobName;
 
     private final Map<String, Map<List<String>, Collector>> labeledCollectorMap = new HashMap<>();
 
-    public PrometheusMetricReporter(String endpoint, String jobName) {
+    @Override
+    public void setEndpoint(String endpoint) {
         this.endpoint = endpoint;
+    }
+
+    @Override
+    public void setJobName(String jobName) {
         this.jobName = jobName;
     }
 
-    public void start() {
-        pushGateway = new PushGateway(endpoint);
-        log.info("Starting PrometheusMetricReporter with {{}, jobName:{}}", endpoint, jobName);
+    public String getEndpoint() {
+        return endpoint;
     }
 
-    public void stop() {
-        if (pushGateway != null) {
-            try {
-                pushGateway.delete(jobName);
-            } catch (IOException e) {
-                log.warn(
-                        "Failed to delete metrics from PushGateway with jobName {}.",
-                        jobName,
-                        e);
-            }
-        }
-        CollectorRegistry.defaultRegistry.clear();
+    public String getJobName() {
+        return jobName;
     }
 
-    public void flush() {
-        if (pushGateway == null) {
-            return;
-        }
-        try {
-            log.info("Push metrics to prometheus gateway");
-            pushGateway.push(CollectorRegistry.defaultRegistry, jobName);
-        } catch (IOException e) {
-            log.warn(
-                    "Failed to push metrics to PushGateway with jobName {}",
-                    jobName,
-                    e);
-        }
-    }
+    @Override
+    public abstract void start();
 
+    @Override
+    public abstract void stop();
+
+    @Override
+    public abstract void flush();
+
+    @Override
     public void putGauge(String metricName, Map<String, String> labels, double value) {
         List<String> labelKeys = new ArrayList<>(labels.keySet());
         Collections.sort(labelKeys);
@@ -88,6 +74,7 @@ public class PrometheusMetricReporter {
         collector.labels(labelValues.toArray(new String[0])).set(value);
     }
 
+    @Override
     public void putCounter(String metricName, Map<String, String> labels, double inc) {
         List<String> labelKeys = new ArrayList<>(labels.keySet());
         Collections.sort(labelKeys);
@@ -100,6 +87,7 @@ public class PrometheusMetricReporter {
         collector.labels(labelValues.toArray(new String[0])).inc(inc);
     }
 
+    @Override
     public void  putFullCounter(String metricName, Map<String, String> labels, double value) {
         List<String> labelKeys = new ArrayList<>(labels.keySet());
         Collections.sort(labelKeys);
@@ -113,6 +101,36 @@ public class PrometheusMetricReporter {
         collector.labels(lvs).inc(value - collector.labels(lvs).get());
     }
 
+    @Override
+    public void putHistogram(String metricName,
+            Map<String, String> labels, List<Bucket> bucketList, double sampleSum, long sampleCount) {
+        List<String> labelKeys = new ArrayList<>(labels.keySet());
+        Collections.sort(labelKeys);
+        List<String> labelValues = new ArrayList<>();
+        for (String labelKey: labelKeys) {
+            labelValues.add(labels.get(labelKey));
+        }
+        HistogramProxyCollector collector = (HistogramProxyCollector) genCollector(metricName, labelKeys,
+                (name, lbl) -> HistogramProxyCollector.build(name, name).labelNames(lbl).create());
+        String[] lvs = labelValues.toArray(new String[0]);
+        collector.labels(lvs).update(bucketList, sampleSum, sampleCount);
+    }
+
+    @Override
+    public void putSummary(String metricName,
+            Map<String, String> labels, List<Quantile> bucketList, double sampleSum, long sampleCount) {
+        List<String> labelKeys = new ArrayList<>(labels.keySet());
+        Collections.sort(labelKeys);
+        List<String> labelValues = new ArrayList<>();
+        for (String labelKey: labelKeys) {
+            labelValues.add(labels.get(labelKey));
+        }
+        SummaryProxyCollector collector = (SummaryProxyCollector) genCollector(metricName, labelKeys,
+                (name, lbl) -> SummaryProxyCollector.build(name, name).labelNames(lbl).create());
+        String[] lvs = labelValues.toArray(new String[0]);
+        collector.labels(lvs).update(bucketList, sampleSum, sampleCount);
+    }
+
     private Collector genCollector(String metricName, List<String> labelKeys,
                              BiFunction<String, String[], Collector> generator) {
         String validMetricName = CHARACTER_FILTER.apply(metricName);
@@ -121,7 +139,8 @@ public class PrometheusMetricReporter {
         if (collector == null) {
             collector = generator.apply(validMetricName, labelKeys.toArray(new String[0]));
             collectorMap.put(labelKeys, collector);
-            log.info("Register collector for {} with label keys: {}" ,validMetricName, String.join(",", labelKeys));
+            log.info("Register collector for {}({}) with label keys: {}" ,
+                    validMetricName, collector.getClass().getCanonicalName() ,String.join(",", labelKeys));
             CollectorRegistry.defaultRegistry.register(collector);
         }
         return collector;

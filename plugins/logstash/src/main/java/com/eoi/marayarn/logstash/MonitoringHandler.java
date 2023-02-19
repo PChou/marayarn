@@ -78,13 +78,13 @@ public class MonitoringHandler implements Handler {
             labels.put("application", yarnId);
             labels.put("uuid", uuid);
             if ("gauge".equals(type)) {
-                applicationMaster.prometheusMetricReporter.putGauge("logstash" + metricKey,
+                applicationMaster.metricsReporter.putGauge("logstash" + metricKey,
                         labels, Double.parseDouble(value.toString()));
             } else if ("counter".equals(type)) {
-                applicationMaster.prometheusMetricReporter.putFullCounter("logstash" + metricKey,
+                applicationMaster.metricsReporter.putFullCounter("logstash" + metricKey,
                         labels, Double.parseDouble(value.toString()));
             }
         }
-        applicationMaster.prometheusMetricReporter.flush();
+        applicationMaster.metricsReporter.flush();
     }
 }

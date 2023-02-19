@@ -1,6 +1,7 @@
 package com.eoi.marayarn.clickhouse.sinker;
 
 import com.eoi.marayarn.MaraApplicationMaster;
+import com.eoi.marayarn.MetricsReporter;
 import com.eoi.marayarn.clickhouse.sinker.parse.text.TextPrometheusMetricDataParser;
 import com.eoi.marayarn.clickhouse.sinker.parse.types.*;
 import com.eoi.marayarn.http.Handler;
@@ -14,6 +15,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class PromWriteHandler implements Handler {
     private static final Logger logger = LoggerFactory.getLogger(PromWriteHandler.class);
@@ -32,7 +34,7 @@ public class PromWriteHandler implements Handler {
         if (!uri.startsWith("/cks/prom/write") || !method.equals(HttpMethod.PUT) ) {
             return null;
         }
-        return new HashMap<>();
+        return Handler.parseQueryString(uri);
     }
 
     @Override
@@ -45,11 +47,11 @@ public class PromWriteHandler implements Handler {
             MetricFamily metricFamily = dataParser.parse();
             while (metricFamily != null) {
                 for (Metric metric: metricFamily.getMetrics()) {
-                    toProm(metric, this.applicationMaster.getJobId());
+                    toProm(metric, this.applicationMaster.getJobId(), urlParams);
                 }
                 metricFamily = dataParser.parse();
             }
-            this.applicationMaster.prometheusMetricReporter.flush();
+            this.applicationMaster.metricsReporter.flush();
             return ProcessResult.jsonProcessResult(AckResponse.OK);
         } catch (Exception ex) {
             logger.warn("Failed to parse clickhouse metrics into prometheus metrics", ex);
@@ -57,16 +59,34 @@ public class PromWriteHandler implements Handler {
         }
     }
 
-    private void toProm(Metric metric, String yarnId) {
+    private void toProm(Metric metric, String yarnId, Map<String, String> urlParams) {
         Map<String, String> labels = new HashMap<>();
-        labels.put("application", yarnId);
+        // inject application_id and container_id
+        labels.put("application_id", yarnId);
+        if (urlParams.containsKey("containerId")) {
+            labels.put("container_id", urlParams.get("containerId"));
+        }
         labels.putAll(metric.getLabels());
         if (metric instanceof Counter) {
-            applicationMaster.prometheusMetricReporter
+            applicationMaster.metricsReporter
                     .putFullCounter(metric.getName(), labels, ((Counter) metric).getValue());
         } else if (metric instanceof Gauge) {
-            applicationMaster.prometheusMetricReporter
+            applicationMaster.metricsReporter
                     .putGauge(metric.getName(), labels, ((Gauge) metric).getValue());
+        } else if (metric instanceof Histogram) {
+            Histogram histogram = (Histogram) metric;
+            List<MetricsReporter.Bucket> buckets =  histogram.getBuckets().stream().map(bucket ->
+                    new MetricsReporter.Bucket(bucket.getUpperBound(), bucket.getCumulativeCount()))
+                    .collect(Collectors.toList());
+            applicationMaster.metricsReporter
+                    .putHistogram(histogram.getName(), labels, buckets, histogram.getSampleSum(), histogram.getSampleCount());
+        } else if (metric instanceof  Summary) {
+            Summary summary = (Summary) metric;
+            List<MetricsReporter.Quantile> buckets =  summary.getQuantiles().stream().map(bucket ->
+                    new MetricsReporter.Quantile(bucket.getQuantile(), bucket.getValue()))
+                    .collect(Collectors.toList());
+            applicationMaster.metricsReporter
+                    .putSummary(summary.getName(), labels, buckets, summary.getSampleSum(), summary.getSampleCount());
         }
     }
 }
