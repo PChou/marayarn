@@ -298,7 +298,7 @@ public class MaraApplicationMaster {
         if (pushGateway != null && !pushGateway.isEmpty()) {
             try {
                 String reporterClass = Optional.ofNullable(System.getenv(REPORTER_CLASS))
-                        .orElse("com.eoi.marayarn.prometheus.PrometheusPGWReporter");
+                        .orElse("com.eoi.marayarn.prometheus.VictoriaMetricsReporter");
                 applicationMaster.metricsReporter = (MetricsReporter) Class.forName(reporterClass).getDeclaredConstructor().newInstance();
                 applicationMaster.metricsReporter.setEndpoint(pushGateway);
                 applicationMaster.metricsReporter.setJobName("yarn_" + applicationMaster.applicationAttemptId.getApplicationId().toString());
