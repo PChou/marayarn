@@ -86,7 +86,7 @@ public class HistogramProxyCollector extends SimpleCollector<HistogramChild> {
                 // sum
                 samples.add(new Sample(this.fullname + "_sum", finallabelKeys, finalLabelValues, listValuesEntry.getValue().sampleSum));
                 // count
-                samples.add(new Sample(this.fullname + "_count", finalLabelValues, finalLabelValues, listValuesEntry.getValue().sampleCount));
+                samples.add(new Sample(this.fullname + "_count", finallabelKeys, finalLabelValues, listValuesEntry.getValue().sampleCount));
                 MetricFamilySamples familySamples = new MetricFamilySamples(this.fullname, Type.HISTOGRAM, this.help, samples);
                 resultFamilySamples.add(familySamples);
             }
