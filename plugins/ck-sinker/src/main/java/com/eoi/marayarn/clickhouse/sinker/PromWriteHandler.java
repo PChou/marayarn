@@ -34,7 +34,14 @@ public class PromWriteHandler implements Handler {
         if (!uri.startsWith("/cks/prom/write") || !method.equals(HttpMethod.PUT) ) {
             return null;
         }
-        return Handler.parseQueryString(uri);
+        String[] segment = uri.split("/");
+        if (segment.length < 5) {
+            return new HashMap<>();
+        } else {
+            Map<String, String> params = new HashMap<>();
+            params.put("containerId", segment[4]);
+            return params;
+        }
     }
 
     @Override
