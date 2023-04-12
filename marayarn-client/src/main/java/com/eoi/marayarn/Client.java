@@ -35,7 +35,7 @@ public class Client implements Closeable {
 
     public static final Logger logger = LoggerFactory.getLogger(Client.class);
     // Memory needed to launch the ApplicationMaster
-    private static final int AM_MIN_MEMEORY = 1024;
+    private static final int AM_DEFAULT_MEMEORY = 1024;
     // Core needed to launch the ApplicationMaster
     private static final int AM_MIN_CORE = 1;
     private static final FsPermission STAGING_DIR_PERMISSION =
@@ -198,7 +198,7 @@ public class Client implements Closeable {
         submissionContext.setQueue(arguments.getQueue());
         Resource capability = Records.newRecord(Resource.class);
         if (arguments.getAmMemory() <= 0) {
-            capability.setMemory(AM_MIN_MEMEORY);
+            capability.setMemory(AM_DEFAULT_MEMEORY);
         } else {
             capability.setMemory(arguments.getAmMemory());
         }
@@ -372,7 +372,11 @@ public class Client implements Closeable {
         List<String> commands = new ArrayList<>();
         commands.add(ApplicationConstants.Environment.JAVA_HOME.$$() + "/bin/java");
         commands.add("-server");
-        commands.add("-Xmx" + AM_MIN_MEMEORY + "m");
+        if (arguments.getAmMemory() <= 0) {
+            commands.add("-Xmx" + AM_DEFAULT_MEMEORY + "m");
+        } else {
+            commands.add("-Xmx" + arguments.getAmMemory() + "m");
+        }
         Path tmpDir = new Path(ApplicationConstants.Environment.PWD.$$(), YarnConfiguration.DEFAULT_CONTAINER_TEMP_DIR);
         commands.add("-Djava.io.tmpdir=" + tmpDir);
         if (arguments.getJavaOptions() != null && !arguments.getJavaOptions().isEmpty()) {
@@ -484,7 +488,8 @@ public class Client implements Closeable {
         FileSystem destFs = FileSystem.get(new URI(destDir.toString()), this.yarnConfiguration);
         FileSystem srcFs;
         if (srcPath.toUri().getScheme() == null) {
-            srcFs = FileSystem.get(new URI(srcPath.toString()), new Configuration());
+            // 如果没有scheme，强制加上 file://，否则可能会命中fs.defaultFs的配置
+            srcFs = FileSystem.get(new URI("file://" + srcPath.toString()), new Configuration());
         } else {
             srcFs = FileSystem.get(new URI(srcPath.toString()), srcConfiguration == null ? this.yarnConfiguration : srcConfiguration);
         }

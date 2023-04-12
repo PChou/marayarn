@@ -15,6 +15,7 @@
             <outputDirectory>marayarn-cli</outputDirectory>
             <includes>
                 <include>marayarn</include>
+                <include>log4j.properties</include>
             </includes>
         </fileSet>
         <fileSet>
