@@ -50,7 +50,7 @@ public class YarnAllocator {
     // 当restarting完成后，restarting重置为true，将pendingNumExecutors赋值给targetNumExecutors
     private boolean restarting = false;
     private int pendingNumExecutors = 0;
-    private Integer availableRetryCount = 0;
+    private Integer availableRetryCount;
 
     // for test
     protected YarnAllocator(ApplicationMasterArguments arguments) {
