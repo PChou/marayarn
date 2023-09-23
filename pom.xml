@@ -25,7 +25,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
-    <hadoop.version>2.10.0</hadoop.version>
+    <hadoop.version>2.10.2</hadoop.version>
   </properties>
 
   <dependencies>
